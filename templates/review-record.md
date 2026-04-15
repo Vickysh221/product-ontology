@@ -1,4 +1,4 @@
-# Jury Review Record
+# Review Record
 
 - review_id: ``
 - lens: ``
