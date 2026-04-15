@@ -1,199 +1,141 @@
-## 目标
+## Objective
 
-把产品学习从“按资料类型分类”升级成“按对象、关系、证据和判断状态分类”。
+This ontology organizes product intelligence around durable change, explicit evidence, and reviewable judgments.
 
 ## 1. Primary Object Families
 
 ### 1. Product
-长期对象。
-字段建议：
-- `id`
+Product is the anchor object, not the ingestion entrypoint.
+Minimum fields:
+- `product_id`
 - `name`
-- `domain`
 - `company`
-- `core_object`
-- `current_problem_it_solves`
+- `domain`
+- `core_problem`
 - `target_user`
-- `primary_workflow`
-- `control_boundary`
-- `memory_model`
-- `collaboration_model`
-- `trust_model`
-- `current_thesis`
 - `status`
 - `confidence`
 - `last_updated`
 
-### 2. Product Event
-最小“新事情”单元。
-字段建议：
-- `id`
+### 2. Event
+Event is the primary ingestion object and the smallest durable change unit.
+
+Minimum Event fields:
+- `event_id`
 - `product_id`
 - `title`
-- `date_detected`
 - `event_type`
+- `date_detected`
+- `time_window`
 - `what_changed`
-- `previous_state`
-- `layer_changed`
-- `why_now`
-- `target_user`
-- `core_tension`
+- `change_layer`
+- `affected_capabilities`
+- `target_problems`
 - `evidence_refs`
-- `user_reaction_summary`
-- `impact_assessment`
-- `writeback_candidate`
+- `status`
 
-### 3. Source Item
-任何一条来源记录。
-字段建议：
-- `id`
+### 3. Source
+Source is the source container with perspective metadata.
+Minimum fields:
+- `source_id`
 - `source_type`
-- `source_domain`
+- `source_container`
 - `publisher`
-- `publish_date`
+- `published_at`
 - `title`
 - `url_or_ref`
-- `products_mentioned`
-- `people_mentioned`
-- `topics`
-- `core_claims`
-- `product_changes_mentioned`
-- `user_pains_mentioned`
-- `timestamps_or_notable_segments`
-- `evidence_quality`
+- `perspective`
 - `confidence`
 
-### 4. Claim
-被判断的陈述，而非纯摘抄。
-字段建议：
-- `id`
+### 4. Artifact
+Artifact is the evidence slice used to anchor interpretation.
+Minimum fields:
+- `artifact_id`
+- `source_id`
+- `slice_type`
+- `quote_or_segment`
+- `location`
+- `perspective`
+- `why_relevant`
+
+### 5. Claim
+A claim is a judged statement about a product, event, pattern, or thesis.
+Minimum fields:
+- `claim_id`
 - `claim_text`
 - `about_objects`
-- `lens`
 - `evidence_refs`
-- `evidence_type`
-- `confidence`
-- `vulnerability`
-- `counterargument`
-- `what_would_change_my_mind`
+- `counterevidence_refs`
 - `status`
-
-### 5. Hypothesis
-仍待验证的解释。
-字段建议：
-- `id`
-- `hypothesis_text`
-- `based_on`
-- `missing_evidence`
-- `disconfirming_evidence`
-- `next_validation_step`
 - `confidence`
 
-### 6. Decision
-稳定方向承诺。
-字段建议：
-- `id`
-- `decision_text`
-- `scope`
-- `owner`
-- `basis`
-- `status`
-- `review_due`
-
-### 7. Question
-开放问题。
-字段建议：
-- `id`
-- `question_text`
-- `domain`
-- `related_objects`
-- `why_it_matters`
-- `blocking_what`
-- `priority`
-- `status`
-
-### 8. Pattern
-跨产品抽象。
-字段建议：
-- `id`
+### 6. Pattern
+A pattern is a reusable abstraction formed only after evidence accumulates across events and claims.
+Minimum fields:
+- `pattern_id`
 - `pattern_name`
-- `description`
-- `abstracted_from`
-- `where_it_applies`
-- `failure_mode`
-- `design_implication`
+- `abstraction`
+- `supported_by_claims`
+- `evidence_refs`
+- `status`
 - `confidence`
 
-### 9. Method
-产品经理 / 体验设计师方法论。
-字段建议：
-- `id`
-- `method_name`
-- `problem_it_solves`
-- `steps`
-- `when_to_use`
-- `when_not_to_use`
-- `evidence_basis`
-- `transferability`
-
-### 10. Jury Review
-评审团审议记录。
-字段建议：
-- `id`
-- `review_target`
-- `review_mode`
-- `seats`
-- `independent_first_passes`
-- `cross_examinations`
-- `agreements`
-- `open_conflicts`
-- `verdict`
+### 7. Thesis
+A thesis is a long-term judgment that survives review and can be promoted or downgraded.
+Minimum fields:
+- `thesis_id`
+- `thesis_text`
+- `scope`
+- `supporting_patterns`
+- `counterclaims`
+- `status`
 - `confidence`
 
-### 11. Evidence Artifact
-证据锚点。
-字段建议：
-- `id`
-- `source_item_id`
-- `artifact_type`
-- `quote_or_segment`
-- `timestamp_or_location`
-- `why_it_matters`
+### 8. Verdict
+A verdict records the review outcome that updates long-term judgment status.
+Minimum fields:
+- `verdict_id`
+- `target_type`
+- `target_id`
+- `outcome`
+- `rationale`
+- `evidence_refs`
+- `judge`
+- `status_change`
 
-### 12. Session Trace
-研究 session 的 bounded progression。
-字段建议：
-- `id`
-- `session_type`
-- `focus_objects`
-- `start_state`
-- `intent_frame`
-- `cognitive_moves`
-- `claims`
-- `hypotheses`
-- `decisions`
-- `open_questions`
-- `action_items`
-- `memory_candidates`
-- `next_entry_point`
-- `writeback_recommended`
+### 9. Counterclaim
+A counterclaim is a first-class objection object that records the strongest known disagreement against a claim, pattern, or thesis.
+Minimum fields:
+- `counterclaim_id`
+- `counterclaim_text`
+- `against_object`
+- `evidence_refs`
+- `status`
+
+### 10. WhyNowHypothesis
+A WhyNowHypothesis is a first-class timing hypothesis that explains why an observed change is happening now rather than earlier or later.
+Minimum fields:
+- `why_now_hypothesis_id`
+- `hypothesis_text`
+- `trigger_event_ids`
+- `evidence_refs`
+- `status`
+- `confidence`
 
 ## 2. Key Relations
 
-- `SourceItem SUPPORTS Claim`
-- `SourceItem DESCRIBES ProductEvent`
-- `ProductEvent UPDATES Product`
-- `Claim ABOUTS Product | Pattern | Method | Question`
-- `Hypothesis TESTS Claim`
-- `SessionTrace PRODUCES Claim | Hypothesis | Decision | Question`
-- `JuryReview EVALUATES Product | ProductEvent | Claim | Pattern`
-- `Pattern ABSTRACTS_FROM ProductEvent | Claim | Review`
-- `Method GUIDES SessionTrace | JuryReview`
-- `WritebackProposal PATCHES Product | Pattern | Method | Question`
+- `Source CONTAINS Artifact`
+- `Artifact ANCHORS Event`
+- `Event UPDATES Product`
+- `Event SUPPORTS Claim`
+- `Claim ABSTRACTS_TO Pattern`
+- `Pattern SUPPORTS Thesis`
+- `Counterclaim CONTESTS Claim | Pattern | Thesis`
+- `Event TESTS WhyNowHypothesis`
+- `Verdict UPDATES Claim | Pattern | Thesis`
 
 ## 3. Knowledge Status Vocabulary
 
-统一状态词：
 - `observed`
 - `described`
 - `inferred`
@@ -215,5 +157,3 @@
 - `benchmark_or_research`
 - `regulatory_or_policy`
 - `mixed`
-
----

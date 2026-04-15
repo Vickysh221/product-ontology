@@ -1,74 +1,35 @@
 # Product Learning Library
 
-面向 AI agent、AI coding、辅助驾驶等领域的一手产品学习库。
+This repository is an event-centered, evidence-constrained, review-updated ontology-based product analysis library.
 
-这不是一个新闻抓取器，也不是一个普通竞品分析库。它是一个基于 ontology 的 **Product Intelligence System**，用于持续吸收异构一手信号，并通过 session trace、jury review、selective writeback，形成稳定的产品判断系统。
+The operating model is deliberately narrow:
+- Product is the anchor object.
+- Event is the entrypoint for durable change.
+- Artifact is the evidence carrier.
+- Review and verdict records are the promotion and downgrade mechanism for long-term judgments.
+- The core operating chain is `Source -> Artifact -> Event -> Claim -> Pattern -> Thesis`.
 
-## 为什么存在
+## Why This Exists
 
-常见的竞品调研库很容易退化成资料堆：
-- 看过很多内容，但无法回答“产品到底变了什么”
-- 能摘录信息，但无法区分事实、推断、假设与判断
-- 能记录 source，却不能稳定写回长期对象层
+This is not a news scraper and not a generic competitor notes repo. It exists to keep product understanding traceable across evidence layers, so long-term judgments can be updated without losing provenance.
 
-这个仓库的目标不是“存更多信息”，而是更稳定地回答：
-- 发生了什么
-- 哪一层变了
-- 为什么现在做
-- 解决什么张力
-- 用户是否真的买账
+The repository is built to answer:
+- What changed
+- What evidence supports the change
+- Which layer changed
+- What should be promoted into a stable judgment
+- What should be downgraded, reopened, or weakened by review
 
-## 系统定义
+## Operating Principles
 
-这个库持续吸收来自以下来源的一手信号：
-- 官网文档
-- changelog / release notes
-- engineering blog
-- GitHub issues / discussions / releases
-- 播客
-- YouTube / Bilibili / livestream
-- 用户评测视频 / 图文 / 社区反馈
-- 监管 / 信任 / 市场信号
+1. Object-centered, not document-centered.
+2. Event-centered, not summary-centered.
+3. Evidence-first, with explicit Artifact layers.
+4. Review-updated, so long-term judgments can move up or down over time.
+5. No skipped layers on writeback.
+6. Traceability is mandatory from thesis-level judgment back to source.
 
-并把这些来源统一沉淀为：
-- 产品记录
-- 事件记录
-- source item
-- claim / hypothesis / decision
-- pattern / method
-- jury review
-- session trace
-- writeback proposal
-
-## 核心原则
-
-1. **对象中心，不是文档中心**
-   库的中心不是“看过哪些文章”，而是“围绕哪些对象，理解如何持续演化”。
-
-2. **session 与 object 分层**
-   session 保存本轮认知推进；object 保存长期稳定连续性。
-
-3. **facts / inference / hypothesis / recommendation 分离**
-   不把所有笔记压平到一个桶里。
-
-4. **source 异构统一化**
-   播客、B站、YouTube、官网、issue、用户反馈都归一到同一种知识对象模型。
-
-5. **jury review 重于单人结论**
-   多视角先独立初审，再交叉质询，再保留分歧，最后谨慎收束。
-
-6. **writeback 是选择性的**
-   只有 confirmed / reusable / stable / worth preserving 的内容才写回长期对象层。
-
-7. **目标是稳定判断，不是信息丰富**
-   系统必须强制回答：
-   - 发生了什么
-   - 哪一层变了
-   - 为什么现在做
-   - 解决什么张力
-   - 用户真实买不买账
-
-## 仓库结构
+## Repository Structure
 
 ```text
 product-ontology/
@@ -77,31 +38,11 @@ product-ontology/
     cognition-ontology.md
     product-intelligence-ontology.md
     jury-review-ontology.md
-  agents/
-    协作推进记录 agent.md
-    collaboration-trace-synthesizer agent.md
-    collaboration-trace-synthesizer output contract.md
-    source-scout agent.md
-    claim-extractor agent.md
-    jury-synthesizer agent.md
   schemas/
     ontology-manifest.json
-    claim-record.schema.json
     session-progress-record.schema.json
+    claim-record.schema.json
     product-record.schema.json
-  templates/
-    source-item.md
-    product-record.md
-    product-event-card.md
-    claim-record.md
-    method-card.md
-    pattern-card.md
-    jury-review-record.md
-    session-progress-record.md
-    writeback-proposal.md
-    today-brief.md
-    weekly-pattern-review.md
-    monthly-thesis-update.md
   library/
     sources/
     events/
@@ -115,6 +56,19 @@ product-ontology/
     questions/
     writebacks/
     _operating-notes.md
+  templates/
+    source-item.md
+    product-record.md
+    product-event-card.md
+    claim-record.md
+    method-card.md
+    pattern-card.md
+    jury-review-record.md
+    session-progress-record.md
+    writeback-proposal.md
+    today-brief.md
+    weekly-pattern-review.md
+    monthly-thesis-update.md
   seed/
     watchlist.md
     initial-questions.md
@@ -122,80 +76,47 @@ product-ontology/
   PRD Session Summary.md
 ```
 
-各目录职责：
-- `ontology/`：定义系统的对象、关系、认知推进与评审协议。
-- `agents/`：定义不同研究与评审 agent 的职责边界与输出要求。
-- `schemas/`：给结构化记录提供 JSON Schema。
-- `templates/`：提供日常写作与写回模板。
-- `library/`：长期累积的运行数据与对象层内容。
-- `seed/`：第一轮 watchlist、问题和 thesis 种子。
+Directory responsibilities:
+- Current `library/` directories store sources, events, products, claims, hypotheses, patterns, methods, reviews, sessions, questions, and writebacks.
+- Current `schemas/` files cover the manifest, product records, claim records, and session progress records.
+- Upcoming workstreams include artifact, counterclaim, thesis, verdict, and review-lens layers once those files are added to the tree.
 
-## 快速开始
+## Getting Started
 
-推荐第一次使用按这个顺序开始：
+1. Read [`ontology/cognition-ontology.md`](./ontology/cognition-ontology.md) and [`ontology/product-intelligence-ontology.md`](./ontology/product-intelligence-ontology.md) first.
+2. Then inspect the current templates for `source-item`, `product-record`, `product-event-card`, `claim-record`, `pattern-card`, `jury-review-record`, `session-progress-record`, and `writeback-proposal`.
+3. Start with `seed/watchlist.md` to choose products and their first event streams.
+4. Capture evidence in source notes and event cards before forming claims.
+5. Use review records to adjust the status of claims, patterns, and theses rather than rewriting history.
+6. Treat artifact, counterclaim, thesis, and verdict layers as upcoming repository additions until those files exist in the tree.
 
-1. 先读 [`ontology/cognition-ontology.md`](./ontology/cognition-ontology.md) 和 [`ontology/product-intelligence-ontology.md`](./ontology/product-intelligence-ontology.md)，理解 object layer / session layer 的边界。
-2. 再看 [`templates/source-item.md`](./templates/source-item.md)、[`templates/product-event-card.md`](./templates/product-event-card.md)、[`templates/session-progress-record.md`](./templates/session-progress-record.md)，掌握最小记录单元。
-3. 用 [`seed/watchlist.md`](./seed/watchlist.md) 里的对象作为第一批跟踪对象。
-4. 每次研究先写 `source item`、再提炼 `claim / hypothesis / question`，最后只把稳定结论写回 `library/` 对应对象层。
-5. 参考 [`library/_operating-notes.md`](./library/_operating-notes.md) 建立每天、每周、每月的运行节奏。
+## Main Tracking Lines
 
-如果你想先跑最小系统，可以从以下目录开始填充：
-- `library/sources/`
-- `library/events/`
-- `library/products/`
-- `library/questions/`
-- `library/sessions/`
+### AI Coding / Agent Workflow
 
-## 第一版推荐监控主线
+Focus on harness, orchestration, runtime, workspace, reviewer loops, long-running tasks, and real friction in environment, cost, and stability.
 
-### 主线 A｜AI coding / agent workflow
+### Multi-Agent Collaboration / Memory / Workspace
 
-重点看：
-- harness / orchestration / runtime / workspace
-- reviewer / critic / steering / governance
-- long-running tasks / subagent / parallel agents
-- 插件、环境、token、Windows、model config 等真实摩擦
+Focus on persistent identity, object continuity, long-term memory, writeback, approval boundaries, and role-based collaboration.
 
-### 主线 B｜multi-agent collaboration / memory / workspace
+### Assisted Driving / Trust Framing / Vehicle AI
 
-重点看：
-- persistent identity
-- long-term memory
-- object continuity
-- workspace ownership
-- role-based vs object-based collaboration
-- writeback / approval / control boundary
+Focus on capability packaging, HMI, trust, safety communication, regulation, and the gap between demo and durable product behavior.
 
-### 主线 C｜assisted driving / trust framing / vehicle AI
+## Output Layers
 
-重点看：
-- 能力展示如何被产品化
-- HMI / trust / safety communication
-- 监管互动与 narrative
-- 车内 AI companion 和 driving stack 的分层
-- 用户的边界感、可解释性、信任断裂点
+### Daily Brief
 
-## 输出层级
+Keep only high-signal changes:
+- what changed
+- why it matters
+- how it affects the long-term chain
 
-### 日报｜Today Brief
+### Weekly Pattern Review
 
-只保留 3–5 个高信号变化：
-- 发生了什么
-- 为什么值得看
-- 和我长期问题的关系
+Answer which changes are repeating across events and which ones are still isolated.
 
-### 周报｜Weekly Pattern Review
+### Monthly Thesis Update
 
-不是列新闻，而是回答：
-- 本周哪些公司在向同一层收敛
-- 哪些是表层 feature，哪些是结构变化
-- 用户抱怨集中在哪里
-
-### 月报｜Monthly Thesis Update
-
-更新你的长期判断：
-- AI coding 的竞争中心正在往哪迁移
-- multi-agent 的责任分配如何变化
-- 辅助驾驶产品叙事中 trust framing 的位置如何变化
-- 哪些旧判断被新证据推翻
+Update the long-term judgment set with explicit promotion, weakening, or downgrade decisions.

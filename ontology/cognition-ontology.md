@@ -1,79 +1,71 @@
 ## Core Claim
 
-本系统不是 task log，也不是聊天摘要器。
-它应被定义为：
+The system stores cognitive progression only when it is traceable through explicit objects.
+Long-term writeback must never skip evidence layers.
+Required traceability chain: `Pattern -> Claim -> Event -> Artifact -> Source`
 
-**object-centered cognitive progression system**
+## Layer Separation Rules
 
-它要保留的不是“说了什么”，而是：
-- 讨论对象是什么
-- 对象是如何被 framing 的
-- 发生了哪些 cognitive moves
-- 哪些理解发生了状态变化
-- 哪些变化稳定到足以 write back
+- Facts cannot contain `why_now`.
+- Interpretation cannot masquerade as observation.
+- Patterns cannot be written from a single source mention.
+- Review cannot introduce new fact nodes.
 
 ## 1. Two-Level Structure
 
 ### A. Object Record
-长期层。
-用于承载稳定定义、长期连续状态、已确认结论、长期 questions、历史关键转向。
+Long-term layer for stable definitions, confirmed judgments, and durable continuity.
+Minimum fields:
+- `object_type`
+- `object_id`
+- `title`
+- `status`
+- `confidence`
+- `evidence_refs`
+- `updated_at`
 
 ### B. Session Progress Record
-会话层。
-用于承载一次有边界的研究 / 讨论 / 审议过程中，理解如何推进、产生哪些 claim / hypothesis / decision / action item。
+Session layer for bounded cognitive progression, framing moves, and provisional outputs.
+Minimum fields:
+- `session_id`
+- `focus_object_ids`
+- `initial_frame`
+- `cognitive_moves`
+- `outputs`
+- `writeback_candidates`
+- `status`
 
 ## 2. Core Design Stance
 
-- **Object-state continuity is the main record.**
-- **Intent continuity is the guardrail.**
-
-意思是：
-- 主记录应忠于对象状态如何演化
-- 但必须保留 initiator 的原始方向，防止 agent 过度重构而偏航
+- Object-state continuity is the main record.
+- Intent continuity is the guardrail.
 
 ## 3. Focus Object
 
-focus object 应广于 task。
-推荐 object types：
+Recommended object types:
 - `product`
-- `product_event`
-- `source_item`
+- `event`
+- `artifact`
+- `source`
 - `claim`
 - `hypothesis`
 - `decision`
 - `question`
 - `pattern`
-- `method`
-- `jury_review`
-- `evidence_artifact`
+- `thesis`
+- `verdict`
+- `review`
+- `counterclaim`
+- `why_now_hypothesis`
 - `session_trace`
-- `strategy`
-- `concept`
-- `problem`
-- `reflection_theme`
 
 ## 4. Frame
 
-对象可从不同 frame 被理解，例如：
-- product strategy
-- user trust
-- workflow mechanism
-- system architecture
-- responsibility allocation
-- positioning / narrative
-- adoption friction
-- safety / regulation
-
-重要的不只是新增信息，很多时候是 **reframing**。
-因此每个 session 至少应保留：
-- initial frame
-- reframing moves
-- current dominant frame
+Objects can be understood through different frames such as product strategy, user trust, workflow mechanism, system architecture, responsibility allocation, positioning, adoption friction, and safety.
 
 ## 5. Cognitive Move
 
-最小记录单元不是 sentence，而是 **cognitive move**。
-推荐 move types：
+Recommended move types:
 - `propose`
 - `clarify`
 - `reframe`
@@ -90,40 +82,9 @@ focus object 应广于 task。
 - `escalate`
 - `assign`
 
-记录规则：
-只记录那些改变了以下任一状态的动作：
-- object understanding
-- frame
-- ownership
-- decision status
-- direction
-- next-step structure
+## 6. Structured Outputs
 
-## 6. Cognitive Dimensions
-
-推荐共享维度：
-- `goal_understanding`
-- `problem_framing`
-- `scope_boundary`
-- `causal_model`
-- `solution_path`
-- `priority_logic`
-- `risk_assessment`
-- `responsibility_model`
-- `decision_status`
-- `confidence_level`
-- `narrative_alignment`
-- `user_reality_alignment`
-
-附加维度：
-- `self_positioning`
-- `identity_tension`
-- `emotional_interpretation`
-- `meta_pattern`
-
-## 7. Structured Outputs
-
-系统必须显式区分：
+The system must distinguish:
 - `fact_statement`
 - `claim`
 - `hypothesis`
@@ -132,11 +93,9 @@ focus object 应广于 task。
 - `plan`
 - `recommendation`
 
-不能压平为 generic note。
+## 7. Trigger / Evidence
 
-## 8. Trigger / Evidence
-
-每个重要认知转变都应保留触发来源：
+Each major cognitive shift should keep a trigger source:
 - `official_source`
 - `engineering_source`
 - `user_feedback`
@@ -148,22 +107,15 @@ focus object 应广于 task。
 - `agent_analysis`
 - `memory`
 
-## 9. Ownership
+## 8. Ownership
 
-最低 ownership 字段：
+Minimum ownership fields:
 - `intent_owner`
 - `decision_owner`
 - `structuring_owner`
 - `execution_owner`
 - `writeback_owner`
 
-## 10. Writeback Rule
+## 9. Writeback Rule
 
-只有满足若干条件，才允许从 session 写回 object：
-- confirmed
-- reusable
-- stable
-- non-ephemeral
-- worth preserving beyond the session
-
----
+Only write back from session to object when the result is confirmed, reusable, stable, non-ephemeral, and worth preserving beyond the session.
