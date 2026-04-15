@@ -8,7 +8,10 @@
     "intent_frame",
     "cognitive_moves",
     "open_questions",
-    "next_entry_point",
+    "node_refs",
+    "edge_refs",
+    "writeback_eligibility",
+    "continuation_entry_point",
     "writeback_recommended"
   ],
   "properties": {
@@ -23,6 +26,13 @@
     "open_questions": {"type": "array", "items": {"type": "string"}},
     "action_items": {"type": "array", "items": {"type": "object"}},
     "memory_candidates": {"type": "array", "items": {"type": "string"}},
+    "node_refs": {"type": "array", "items": {"type": "string"}},
+    "edge_refs": {"type": "array", "items": {"type": "string"}},
+    "writeback_eligibility": {
+      "type": "string",
+      "enum": ["eligible", "ineligible", "conditional"]
+    },
+    "continuation_entry_point": {"type": "string"},
     "next_entry_point": {"type": "string"},
     "writeback_recommended": {"type": "boolean"}
   }

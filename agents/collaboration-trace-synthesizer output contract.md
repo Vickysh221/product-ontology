@@ -27,8 +27,10 @@ Must contain:
 - decisions
 - open questions
 - action items
-- next entry point
-- writeback recommendation
+- node_refs
+- edge_refs
+- writeback_eligibility
+- continuation_entry_point
 
 ### 2. Session JSON Record
 
@@ -51,7 +53,10 @@ Minimum fields:
   "open_questions": [],
   "action_items": [],
   "memory_candidates": [],
-  "next_entry_point": "",
+  "node_refs": [],
+  "edge_refs": [],
+  "writeback_eligibility": "eligible | ineligible | conditional",
+  "continuation_entry_point": "",
   "writeback_recommended": true
 }
 ```

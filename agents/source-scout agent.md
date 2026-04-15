@@ -22,4 +22,11 @@
 - 不可把营销语言当成机制事实
 - 不可忽略发布时间和版本上下文
 
+## Ontology Constraints
+
+- Allowed Created Nodes: Source, Artifact
+- Allowed Referenced Nodes: Product, Capability, Problem, Event
+- Allowed Edges: Artifact DERIVED_FROM Source; Artifact MENTIONS Product | Capability | Problem; Artifact SUGGESTS Event
+- Forbidden: do not create Claim, Pattern, Thesis; do not create Product, Capability, Problem, Event
+
 ---

@@ -38,6 +38,10 @@ That means:
 3. preserve decisions / open questions / next actions
 4. recommend whether writeback is justified
 
+## Output Rule
+
+Structured session trace is the primary output. Long-form prose is secondary and cannot replace structured node/edge references.
+
 ## Triage Levels
 
 - `light`：goal + current state + next step

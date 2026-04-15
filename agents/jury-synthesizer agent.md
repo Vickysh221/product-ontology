@@ -17,6 +17,12 @@
 - 推荐 writeback 项
 - 不应写回的暂时性内容
 
+## Ontology Constraints
+
+- Allowed Nodes: Review, Verdict
+- Allowed Targets: Claim, Pattern, Thesis
+- Forbidden: do not add new fact nodes; do not rewrite Event; do not silently resolve conflict without Verdict
+
 ## 禁止
 
 - 不可强行合并冲突

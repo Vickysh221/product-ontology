@@ -20,4 +20,11 @@
 - missing evidence
 - counterargument
 
+## Ontology Constraints
+
+- Allowed Created Nodes: Event, Capability, Problem, Claim, Counterclaim, WhyNowHypothesis
+- Allowed Referenced Nodes: Artifact
+- Allowed Edges: Event HAS_EVIDENCE Artifact; Event AFFECTS Capability; Event ADDRESSES Problem; Claim INTERPRETS Event; Claim SUPPORTED_BY Artifact; Counterclaim CHALLENGES Claim; WhyNowHypothesis EXPLAINS Event
+- Forbidden: do not create Artifact
+
 ---
