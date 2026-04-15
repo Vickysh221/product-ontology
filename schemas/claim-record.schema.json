@@ -3,25 +3,22 @@
   "title": "ClaimRecord",
   "type": "object",
   "required": [
-    "id",
+    "claim_id",
     "claim_text",
     "about_objects",
-    "lens",
-    "evidence_refs",
-    "confidence",
-    "status"
+    "event_refs",
+    "artifact_refs",
+    "status",
+    "confidence"
   ],
   "properties": {
-    "id": {"type": "string"},
+    "claim_id": {"type": "string"},
     "claim_text": {"type": "string"},
     "about_objects": {"type": "array", "items": {"type": "string"}},
-    "lens": {"type": "string"},
-    "evidence_refs": {"type": "array", "items": {"type": "string"}},
-    "evidence_type": {"type": "string"},
+    "event_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "artifact_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "counterevidence_refs": {"type": "array", "items": {"type": "string"}},
     "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
-    "vulnerability": {"type": "string"},
-    "counterargument": {"type": "string"},
-    "what_would_change_my_mind": {"type": "string"},
     "status": {"type": "string"}
   }
 }

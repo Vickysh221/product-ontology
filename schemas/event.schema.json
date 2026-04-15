@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EventRecord",
+  "type": "object",
+  "required": [
+    "event_id",
+    "product_id",
+    "title",
+    "event_type",
+    "date_detected",
+    "time_window",
+    "what_changed",
+    "change_layer",
+    "affected_capabilities",
+    "target_problems",
+    "evidence_refs",
+    "status"
+  ],
+  "properties": {
+    "event_id": { "type": "string" },
+    "product_id": { "type": "string" },
+    "title": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "launch",
+        "update",
+        "repositioning",
+        "pricing_change",
+        "policy_change",
+        "ux_change",
+        "capability_change",
+        "workflow_change",
+        "trust_signal",
+        "market_signal"
+      ]
+    },
+    "date_detected": { "type": "string" },
+    "time_window": { "type": "string" },
+    "what_changed": { "type": "string" },
+    "change_layer": {
+      "type": "string",
+      "enum": [
+        "interface",
+        "capability",
+        "workflow",
+        "coordination",
+        "governance",
+        "trust",
+        "business_model",
+        "distribution"
+      ]
+    },
+    "affected_capabilities": { "type": "array", "items": { "type": "string" } },
+    "target_problems": { "type": "array", "items": { "type": "string" } },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "validated", "contested", "merged", "rejected"]
+    }
+  }
+}
