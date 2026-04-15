@@ -1,8 +1,26 @@
-## 项目定义
+# Product Learning Library
 
-这不是一个新闻抓取器，也不是一个普通竞品分析库。
+面向 AI agent、AI coding、辅助驾驶等领域的一手产品学习库。
 
-它是一个 **Product Learning Library**，用于持续吸收来自：
+这不是一个新闻抓取器，也不是一个普通竞品分析库。它是一个基于 ontology 的 **Product Intelligence System**，用于持续吸收异构一手信号，并通过 session trace、jury review、selective writeback，形成稳定的产品判断系统。
+
+## 为什么存在
+
+常见的竞品调研库很容易退化成资料堆：
+- 看过很多内容，但无法回答“产品到底变了什么”
+- 能摘录信息，但无法区分事实、推断、假设与判断
+- 能记录 source，却不能稳定写回长期对象层
+
+这个仓库的目标不是“存更多信息”，而是更稳定地回答：
+- 发生了什么
+- 哪一层变了
+- 为什么现在做
+- 解决什么张力
+- 用户是否真的买账
+
+## 系统定义
+
+这个库持续吸收来自以下来源的一手信号：
 - 官网文档
 - changelog / release notes
 - engineering blog
@@ -12,7 +30,7 @@
 - 用户评测视频 / 图文 / 社区反馈
 - 监管 / 信任 / 市场信号
 
-并把这些异构来源统一沉淀为：
+并把这些来源统一沉淀为：
 - 产品记录
 - 事件记录
 - source item
@@ -50,10 +68,10 @@
    - 解决什么张力
    - 用户真实买不买账
 
-## 建议目录
+## 仓库结构
 
 ```text
-product-learning-library/
+product-ontology/
   README.md
   ontology/
     cognition-ontology.md
@@ -96,15 +114,43 @@ product-learning-library/
     sessions/
     questions/
     writebacks/
+    _operating-notes.md
   seed/
     watchlist.md
     initial-questions.md
     first-tracking-theses.md
+  PRD Session Summary.md
 ```
+
+各目录职责：
+- `ontology/`：定义系统的对象、关系、认知推进与评审协议。
+- `agents/`：定义不同研究与评审 agent 的职责边界与输出要求。
+- `schemas/`：给结构化记录提供 JSON Schema。
+- `templates/`：提供日常写作与写回模板。
+- `library/`：长期累积的运行数据与对象层内容。
+- `seed/`：第一轮 watchlist、问题和 thesis 种子。
+
+## 快速开始
+
+推荐第一次使用按这个顺序开始：
+
+1. 先读 [`ontology/cognition-ontology.md`](./ontology/cognition-ontology.md) 和 [`ontology/product-intelligence-ontology.md`](./ontology/product-intelligence-ontology.md)，理解 object layer / session layer 的边界。
+2. 再看 [`templates/source-item.md`](./templates/source-item.md)、[`templates/product-event-card.md`](./templates/product-event-card.md)、[`templates/session-progress-record.md`](./templates/session-progress-record.md)，掌握最小记录单元。
+3. 用 [`seed/watchlist.md`](./seed/watchlist.md) 里的对象作为第一批跟踪对象。
+4. 每次研究先写 `source item`、再提炼 `claim / hypothesis / question`，最后只把稳定结论写回 `library/` 对应对象层。
+5. 参考 [`library/_operating-notes.md`](./library/_operating-notes.md) 建立每天、每周、每月的运行节奏。
+
+如果你想先跑最小系统，可以从以下目录开始填充：
+- `library/sources/`
+- `library/events/`
+- `library/products/`
+- `library/questions/`
+- `library/sessions/`
 
 ## 第一版推荐监控主线
 
 ### 主线 A｜AI coding / agent workflow
+
 重点看：
 - harness / orchestration / runtime / workspace
 - reviewer / critic / steering / governance
@@ -112,6 +158,7 @@ product-learning-library/
 - 插件、环境、token、Windows、model config 等真实摩擦
 
 ### 主线 B｜multi-agent collaboration / memory / workspace
+
 重点看：
 - persistent identity
 - long-term memory
@@ -121,6 +168,7 @@ product-learning-library/
 - writeback / approval / control boundary
 
 ### 主线 C｜assisted driving / trust framing / vehicle AI
+
 重点看：
 - 能力展示如何被产品化
 - HMI / trust / safety communication
@@ -131,22 +179,23 @@ product-learning-library/
 ## 输出层级
 
 ### 日报｜Today Brief
+
 只保留 3–5 个高信号变化：
 - 发生了什么
 - 为什么值得看
 - 和我长期问题的关系
 
 ### 周报｜Weekly Pattern Review
+
 不是列新闻，而是回答：
 - 本周哪些公司在向同一层收敛
 - 哪些是表层 feature，哪些是结构变化
 - 用户抱怨集中在哪里
 
 ### 月报｜Monthly Thesis Update
+
 更新你的长期判断：
 - AI coding 的竞争中心正在往哪迁移
 - multi-agent 的责任分配如何变化
 - 辅助驾驶产品叙事中 trust framing 的位置如何变化
 - 哪些旧判断被新证据推翻
-
----
