@@ -7,7 +7,7 @@
 
 ### 每周人工做两件事
 1. 审核候选 writeback
-2. 更新 pattern / method / product thesis
+2. 更新 patterns / methods / theses（对应当前 library 结构）
 
 ### 每月做一件事
 - 更新长期 thesis，并显式标注哪些判断被强化、削弱或推翻
@@ -28,3 +28,16 @@
 把它做成一个：
 
 **证据先行、分歧保留、强制反诘、可持续 writeback 的产品学习系统。**
+
+## Object Storage Rules
+
+- `sources/` stores source containers and metadata.
+- `artifacts/` stores evidence slices extracted from sources.
+- `events/` stores durable change units.
+- `claims/` stores affirmative interpretation records.
+- `counterclaims/` stores opposing or limiting interpretation records.
+- `patterns/` stores reviewed structural patterns and recurring observations.
+- `theses/` stores reviewed long-horizon judgments and durable positions.
+- `reviews/` stores critique traces and review notes.
+- `verdicts/` stores final review outcomes and disposition records.
+- `methods/` remains part of the current library model for process-level guidance.
