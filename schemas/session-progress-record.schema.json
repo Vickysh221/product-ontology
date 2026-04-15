@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionProgressRecord",
+  "type": "object",
+  "required": [
+    "session_type",
+    "focus_objects",
+    "intent_frame",
+    "cognitive_moves",
+    "open_questions",
+    "next_entry_point",
+    "writeback_recommended"
+  ],
+  "properties": {
+    "session_type": {"type": "string"},
+    "focus_objects": {"type": "array", "items": {"type": "string"}},
+    "intent_frame": {"type": "object"},
+    "start_state": {"type": "string"},
+    "cognitive_moves": {"type": "array", "items": {"type": "object"}},
+    "claims": {"type": "array", "items": {"type": "string"}},
+    "hypotheses": {"type": "array", "items": {"type": "string"}},
+    "decisions": {"type": "array", "items": {"type": "string"}},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "action_items": {"type": "array", "items": {"type": "object"}},
+    "memory_candidates": {"type": "array", "items": {"type": "string"}},
+    "next_entry_point": {"type": "string"},
+    "writeback_recommended": {"type": "boolean"}
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProductRecord",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "domain",
+    "current_thesis",
+    "status",
+    "last_updated"
+  ],
+  "properties": {
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "domain": {"type": "string"},
+    "company": {"type": "string"},
+    "core_object": {"type": "string"},
+    "current_problem_it_solves": {"type": "string"},
+    "target_user": {"type": "array", "items": {"type": "string"}},
+    "primary_workflow": {"type": "string"},
+    "control_boundary": {"type": "string"},
+    "memory_model": {"type": "string"},
+    "collaboration_model": {"type": "string"},
+    "trust_model": {"type": "string"},
+    "current_thesis": {"type": "string"},
+    "status": {"type": "string"},
+    "confidence": {"type": "string"},
+    "last_updated": {"type": "string"}
+  }
+}

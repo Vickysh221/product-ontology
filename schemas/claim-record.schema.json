@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClaimRecord",
+  "type": "object",
+  "required": [
+    "id",
+    "claim_text",
+    "about_objects",
+    "lens",
+    "evidence_refs",
+    "confidence",
+    "status"
+  ],
+  "properties": {
+    "id": {"type": "string"},
+    "claim_text": {"type": "string"},
+    "about_objects": {"type": "array", "items": {"type": "string"}},
+    "lens": {"type": "string"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}},
+    "evidence_type": {"type": "string"},
+    "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+    "vulnerability": {"type": "string"},
+    "counterargument": {"type": "string"},
+    "what_would_change_my_mind": {"type": "string"},
+    "status": {"type": "string"}
+  }
+}

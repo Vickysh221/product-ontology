@@ -1,0 +1,41 @@
+{
+  "library_name": "Product Learning Library",
+  "core_principle": "object-centered cognitive progression with selective writeback",
+  "entities": [
+    "product",
+    "product_event",
+    "source_item",
+    "claim",
+    "hypothesis",
+    "decision",
+    "question",
+    "pattern",
+    "method",
+    "jury_review",
+    "evidence_artifact",
+    "session_trace",
+    "writeback_proposal"
+  ],
+  "relations": [
+    "SourceItem SUPPORTS Claim",
+    "SourceItem DESCRIBES ProductEvent",
+    "ProductEvent UPDATES Product",
+    "Claim ABOUTS Object",
+    "Hypothesis TESTS Claim",
+    "SessionTrace PRODUCES Claim",
+    "JuryReview EVALUATES Object",
+    "Pattern ABSTRACTS_FROM ClaimsAndEvents",
+    "Method GUIDES ReviewOrResearch",
+    "WritebackProposal PATCHES Object"
+  ],
+  "statuses": [
+    "observed",
+    "inferred",
+    "hypothesized",
+    "contested",
+    "confirmed",
+    "deferred",
+    "rejected",
+    "written_back"
+  ]
+}
