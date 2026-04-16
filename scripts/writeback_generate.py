@@ -261,9 +261,12 @@ def resolve_ux_lens_refs() -> list[Path]:
     return [principles_dir / filename for filename in UX_LENS_REF_NAMES]
 
 
+UX_LENS_REFS = resolve_ux_lens_refs()
+
+
 def build_ai_native_ux_lens_pack() -> list[str]:
     lens_points: list[str] = []
-    for path in resolve_ux_lens_refs():
+    for path in UX_LENS_REFS:
         if not path.exists():
             continue
         text = read_file(path)
