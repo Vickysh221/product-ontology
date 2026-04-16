@@ -24,6 +24,8 @@ def build_markdown(args: argparse.Namespace) -> str:
     collaboration_mode = normalize_text(args.collaboration_mode)
     # Preserve matrix-guidance fields exactly as entered for downstream rendering.
     target_audience = normalize_text(args.target_audience)
+    research_direction = normalize_text(args.research_direction)
+    direction_status = normalize_text(args.direction_status)
     decision_intent = normalize_text(args.decision_intent)
     evidence_posture = normalize_text(args.evidence_posture)
     focus_priority = parse_csv(args.focus_priority)
@@ -50,6 +52,8 @@ def build_markdown(args: argparse.Namespace) -> str:
 - collaboration_mode: `{collaboration_mode}`
 - focus_priority: {format_list(focus_priority)}
 - target_audience: `{target_audience}`
+- research_direction: `{research_direction}`
+- direction_status: `{direction_status}`
 - decision_intent: `{decision_intent}`
 - evidence_posture: `{evidence_posture}`
 - special_attention: {format_list(special_attention)}
@@ -71,6 +75,11 @@ def main() -> int:
     create.add_argument("--collaboration-mode", choices=["integrated", "sectioned", "appendix"])
     create.add_argument("--focus-priority")
     create.add_argument("--target-audience")
+    create.add_argument("--research-direction")
+    create.add_argument(
+        "--direction-status",
+        choices=["user_provided", "system_suggested_pending", "system_suggested_approved"],
+    )
     create.add_argument("--decision-intent")
     create.add_argument("--evidence-posture")
     create.add_argument("--special-attention")

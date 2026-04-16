@@ -149,3 +149,33 @@ def test_writeback_intake_cli_records_audience_and_extra_questions(tmp_path):
     text = target.read_text()
     assert "- target_audience: `team`" in text
     assert "`这是不是范式迁移`" in text
+
+
+def test_writeback_intake_cli_records_research_direction_and_status(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-research-demo",
+            "--output",
+            str(target),
+            "--collaboration-mode",
+            "integrated",
+            "--target-audience",
+            "team",
+            "--research-direction",
+            "multi-agent 是否已经从高级 workflow 包装进入可治理的 Agent Team 范式迁移",
+            "--direction-status",
+            "user_provided",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装进入可治理的 Agent Team 范式迁移`" in text
+    assert "- direction_status: `user_provided`" in text
