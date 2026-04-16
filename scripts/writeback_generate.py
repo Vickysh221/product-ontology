@@ -12,6 +12,13 @@ def read_field(text: str, field: str) -> str:
     return match.group(1) if match else ""
 
 
+def read_list_field(text: str, field: str) -> list[str]:
+    match = re.search(rf"- {re.escape(field)}: \[(.*?)\]", text)
+    if not match:
+        return []
+    return [item.strip(" `") for item in match.group(1).split(",") if item.strip(" `")]
+
+
 def parse_csv(value: str | None) -> list[str]:
     if not value:
         return []
@@ -36,6 +43,8 @@ def render_writeback(args: argparse.Namespace) -> str:
 
     collaboration_mode = read_field(intake_text, "collaboration_mode")
     used_default_rules = read_field(intake_text, "used_default_rules")
+    target_audience = read_field(intake_text, "target_audience")
+    extra_questions = read_list_field(intake_text, "extra_questions")
     review_refs = parse_csv(args.review_refs)
     verdict_refs = parse_csv(args.verdict_refs)
     preserved_tensions = parse_csv(args.preserved_tensions)
@@ -48,6 +57,9 @@ def render_writeback(args: argparse.Namespace) -> str:
 - used_default_rules: `{used_default_rules}`
 - focus_priority: []
 - special_attention: []
+- target_audience: `{target_audience}`
+- extra_questions: {format_list(extra_questions)}
+- synthesis_ref: `{args.synthesis_ref}`
 - review_refs: {format_list(review_refs)}
 - verdict_refs: {format_list(verdict_refs)}
 - preserved_tensions: {format_list(preserved_tensions)}
@@ -55,6 +67,10 @@ def render_writeback(args: argparse.Namespace) -> str:
 ## 标题
 
 {args.title}
+
+## 副标题
+
+{args.subtitle}
 
 ## 摘要
 
@@ -86,7 +102,9 @@ def main() -> int:
     render.add_argument("--intake-file", required=True)
     render.add_argument("--output", required=True)
     render.add_argument("--title", required=True)
+    render.add_argument("--subtitle", required=True)
     render.add_argument("--summary", required=True)
+    render.add_argument("--synthesis-ref", required=True)
     render.add_argument("--review-refs", default="")
     render.add_argument("--verdict-refs", default="")
     render.add_argument("--preserved-tensions", default="")

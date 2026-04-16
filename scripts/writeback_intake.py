@@ -22,6 +22,7 @@ def format_list(values: list[str]) -> str:
 
 def build_markdown(args: argparse.Namespace) -> str:
     collaboration_mode = normalize_text(args.collaboration_mode)
+    # Preserve matrix-guidance fields exactly as entered for downstream rendering.
     target_audience = normalize_text(args.target_audience)
     decision_intent = normalize_text(args.decision_intent)
     evidence_posture = normalize_text(args.evidence_posture)

@@ -33,8 +33,12 @@ def test_writeback_generate_requires_intake(tmp_path):
             str(target),
             "--title",
             "Demo",
+            "--subtitle",
+            "Demo subtitle",
             "--summary",
             "Demo summary",
+            "--synthesis-ref",
+            "synthesis-demo",
         ],
         check=False,
         capture_output=True,
@@ -75,8 +79,12 @@ def test_writeback_generate_with_default_intake(tmp_path):
             str(target),
             "--title",
             "Demo",
+            "--subtitle",
+            "Demo subtitle",
             "--summary",
             "Demo summary",
+            "--synthesis-ref",
+            "synthesis-demo",
         ],
         check=False,
         capture_output=True,
@@ -100,3 +108,54 @@ def test_sample_writeback_records_intake_and_reviews():
     assert "## 评审视角" in text
     assert "- preserve_tensions: [`真实用户是否看见并理解了解释能力`]" in intake
     assert "- used_default_rules: `false`" in intake
+
+
+def test_writeback_generate_renders_audience_and_subtitle(tmp_path):
+    intake = tmp_path / "intake.md"
+    intake.write_text(
+        """# Writeback Intake Record
+- intake_id: `intake-demo`
+- collaboration_mode: `integrated`
+- focus_priority: [`机制`, `用户信任`]
+- target_audience: `team`
+- decision_intent: `understand`
+- evidence_posture: `balanced`
+- special_attention: []
+- extra_questions: [`这是不是范式迁移`]
+- avoidances: []
+- preserve_tensions: []
+- used_default_rules: `false`
+"""
+    )
+    target = tmp_path / "writeback.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render",
+            "--writeback-id",
+            "writeback-demo",
+            "--intake-file",
+            str(intake),
+            "--output",
+            str(target),
+            "--title",
+            "父标题",
+            "--subtitle",
+            "副标题",
+            "--summary",
+            "摘要",
+            "--synthesis-ref",
+            "synthesis-demo",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- target_audience: `team`" in text
+    assert "- extra_questions: [`这是不是范式迁移`]" in text
+    assert "## 副标题" in text
+    assert "副标题" in text
+    assert "- synthesis_ref: `synthesis-demo`" in text

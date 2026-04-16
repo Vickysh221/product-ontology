@@ -123,3 +123,29 @@ def test_writeback_intake_cli_rejects_invalid_collaboration_mode(tmp_path):
     )
     assert result.returncode != 0
     assert "invalid choice" in result.stderr
+
+
+def test_writeback_intake_cli_records_audience_and_extra_questions(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-demo",
+            "--output",
+            str(target),
+            "--target-audience",
+            "team",
+            "--extra-questions",
+            "这是不是范式迁移",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- target_audience: `team`" in text
+    assert "`这是不是范式迁移`" in text
