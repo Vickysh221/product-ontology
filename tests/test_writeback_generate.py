@@ -121,7 +121,7 @@ def test_writeback_generate_renders_audience_and_subtitle(tmp_path):
 - decision_intent: `understand`
 - evidence_posture: `balanced`
 - special_attention: []
-- extra_questions: [`这是不是范式迁移`]
+- extra_questions: [`这是不是范式迁移`, `是否真的改变协作结构`]
 - avoidances: []
 - preserve_tensions: []
 - used_default_rules: `false`
@@ -155,7 +155,7 @@ def test_writeback_generate_renders_audience_and_subtitle(tmp_path):
     assert result.returncode == 0, result.stderr
     text = target.read_text()
     assert "- target_audience: `team`" in text
-    assert "- extra_questions: [`这是不是范式迁移`]" in text
+    assert "- extra_questions: [`这是不是范式迁移`, `是否真的改变协作结构`]" in text
     assert "## 副标题" in text
     assert "副标题" in text
     assert "- synthesis_ref: `synthesis-demo`" in text
