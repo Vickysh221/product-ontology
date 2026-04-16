@@ -214,3 +214,14 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     assert "- `podwise-ai-7635732-bdfba3f3`" in text
     assert "- `podwise-ai-7504915-91b52a0e`" in text
     assert "- `podwise-ai-7368984-f9a0fefa`" in text
+
+
+def test_materialized_integrated_team_paradigm_is_longform():
+    text = Path("library/writebacks/podcasts/matrix/integrated-team-paradigm.md").read_text()
+    assert "待补充" not in text
+    assert "待由 evidence" not in text
+    assert "## 机制拆解" in text
+    assert "## 能力边界与工作流变化" in text
+    assert "## 针对本次追问的回答" in text
+    assert "podwise-ai-7758431-2cd3ef48" in text
+    assert "podwise-ai-7368984-f9a0fefa" in text
