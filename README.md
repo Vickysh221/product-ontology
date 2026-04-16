@@ -109,7 +109,7 @@ Canonical sample:
 ## Writeback Matrix Test
 
 ```bash
-python3 scripts/writeback_matrix.py generate-all \
+"/Users/vickyshou/.local/bin/uv" run --with pyyaml python scripts/writeback_matrix.py generate-all \
   --config seed/writeback-matrix-test.yaml \
   --intake-dir library/writeback-intakes/podcasts/matrix \
   --writeback-dir library/writebacks/podcasts/matrix

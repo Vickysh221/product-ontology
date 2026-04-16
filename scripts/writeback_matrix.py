@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    print("missing dependency: pyyaml. Run with `uv run --with pyyaml ...`.", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def load_config(path: str) -> dict:
