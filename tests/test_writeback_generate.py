@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 
 def test_sample_reviews_exist_for_promoted_podcast_claim():
@@ -15,3 +16,133 @@ def test_sample_reviews_exist_for_promoted_podcast_claim():
     assert "- produces_verdict_id: `verdict-podwise-ai-7650271-dfb97270-16`" in contrarian_review
     assert "- target_id: `claim-podwise-ai-7650271-dfb97270-16`" in verdict
     assert "- outcome: `supported_with_preserved_tension`" in verdict
+
+
+def test_writeback_generate_requires_intake(tmp_path):
+    target = tmp_path / "writeback.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render",
+            "--writeback-id",
+            "writeback-demo",
+            "--output",
+            str(target),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "intake" in result.stderr.lower()
+
+
+def test_writeback_generate_with_default_intake(tmp_path):
+    intake = tmp_path / "intake.md"
+    intake.write_text(
+        """# Writeback Intake Record
+- intake_id: `intake-demo`
+- collaboration_mode: ``
+- focus_priority: []
+- target_audience: ``
+- decision_intent: ``
+- evidence_posture: ``
+- special_attention: []
+- extra_questions: []
+- avoidances: []
+- preserve_tensions: []
+- used_default_rules: `true`
+"""
+    )
+    target = tmp_path / "writeback.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render",
+            "--writeback-id",
+            "writeback-demo",
+            "--intake-file",
+            str(intake),
+            "--output",
+            str(target),
+            "--title",
+            "Demo",
+            "--summary",
+            "Demo summary",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- intake_id: `intake-demo`" in text
+    assert "- used_default_rules: `true`" in text
+    assert "## 评审视角" in text
+
+
+def test_writeback_generate_requires_intake(tmp_path):
+    target = tmp_path / "writeback.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render",
+            "--writeback-id",
+            "writeback-demo",
+            "--output",
+            str(target),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "intake" in result.stderr.lower()
+
+
+def test_writeback_generate_with_default_intake_rendering(tmp_path):
+    intake = tmp_path / "intake.md"
+    intake.write_text(
+        """# Writeback Intake Record
+- intake_id: `intake-demo`
+- collaboration_mode: ``
+- focus_priority: []
+- target_audience: ``
+- decision_intent: ``
+- evidence_posture: ``
+- special_attention: []
+- extra_questions: []
+- avoidances: []
+- preserve_tensions: []
+- used_default_rules: `true`
+"""
+    )
+    target = tmp_path / "writeback.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render",
+            "--writeback-id",
+            "writeback-demo",
+            "--intake-file",
+            str(intake),
+            "--output",
+            str(target),
+            "--title",
+            "Demo",
+            "--summary",
+            "Demo summary",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- intake_id: `intake-demo`" in text
+    assert "- used_default_rules: `true`" in text
+    assert "## 评审视角" in text
