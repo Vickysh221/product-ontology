@@ -90,6 +90,67 @@ Directory responsibilities:
 5. Use review records to adjust the status of claims, patterns, and theses rather than rewriting history.
 6. Treat artifact, counterclaim, thesis, and verdict layers as upcoming repository additions until those files exist in the tree.
 
+## Podcast Ingestion
+
+This repository includes a phase-1 Podwise ingestion flow for podcast and video episode materials.
+
+Prerequisites:
+- `podwise` is installed and authorized.
+- The repository-level MCP configuration in [`.codex/config.toml`](./.codex/config.toml) remains available when running commands from this repo.
+
+Commands:
+
+```bash
+python3 scripts/podcast_import.py add-url https://example.com/episode-1 https://example.com/episode-2
+python3 scripts/podcast_import.py import-list
+python3 scripts/source_ingest.py init-source official "OpenAI blog" --url https://openai.com/news/ --source-type official_release --ingestion-method official_list
+python3 scripts/wechat_wewe_rss_import.py import-feed <feed-url> <source-label>
+python3 scripts/wechat_candidates.py extract <wechat-slug>
+python3 scripts/wechat_candidates.py promote <wechat-slug> --event-ids <event-candidate-id> --claim-ids <claim-candidate-id>
+python3 scripts/xiaohongshu_redbook_import.py import-note <source-label> <title> <note-url> --body-file <path>
+python3 scripts/xiaohongshu_video_transcript.py queue <note-url>
+python3 scripts/xiaohongshu_video_transcript.py import-transcript <note-url> --body-file <path>
+python3 scripts/xiaohongshu_candidates.py extract <xiaohongshu-slug>
+python3 scripts/xiaohongshu_candidates.py promote <xiaohongshu-slug> --event-ids <event-candidate-id> --claim-ids <claim-candidate-id>
+python3 scripts/podcast_candidates.py extract <episode-slug>
+python3 scripts/podcast_candidates.py promote <episode-slug> --event-ids <event-candidate-id> --claim-ids <claim-candidate-id>
+```
+
+Behavior:
+- URLs are stored in [`seed/podcast-import-list.md`](./seed/podcast-import-list.md).
+- Duplicate URLs are ignored using `source_url` as the dedupe key.
+- Each imported episode creates one source record in `library/sources/podcasts/`.
+- Each imported episode creates three artifact records in `library/artifacts/podcasts/<episode-slug>/`: `transcript.md`, `summary.md`, and `highlights.md`.
+- The import flow stops at `Source -> Artifact`; Phase 2 candidate extraction is a separate step and does not write directly into durable `events/` or `claims/`.
+
+Candidate extraction:
+- Dynamic filtering and scoring are controlled by [`seed/watch-profile.yaml`](./seed/watch-profile.yaml).
+- Phase 2 writes only candidate files into `library/sessions/podcast-candidates/<episode-slug>/`.
+- The extractor reads `summary + highlights` first and keeps `transcript` as follow-up evidence for later refinement.
+- Candidate outputs use Chinese explanatory fields and try to attach transcript timestamps even for summary-derived candidates.
+- Manual promotion writes durable records into `library/events/podcasts/` and `library/claims/podcasts/`, and appends a decision trail to `library/sessions/podcast-candidates/<episode-slug>/promotion-log.md`.
+
+## Source Architecture
+
+The repository now treats four initial channels as parallel ingestion sources:
+- `podwise` for podcast episodes
+- `wewe-rss` for WeChat Official Account articles
+- `redbook` for Xiaohongshu notes and comments
+- `official` for official websites, OTA pages, release notes, and engineering blogs
+
+Normalization rules:
+- Every channel writes a normalized source record with `source_type`, `platform`, `ingestion_method`, `source_url`, and `canonical_url`.
+- Every channel writes normalized artifacts such as `transcript`, `summary`, `highlights`, `full_text`, `comment_batch`, or `metadata_snapshot`.
+- Official pages are listed in [`seed/official-sources.yaml`](./seed/official-sources.yaml) by brand and page label.
+- Shared source scaffolding lives in [`scripts/source_ingest.py`](./scripts/source_ingest.py) so channel-specific adapters can reuse one repository structure instead of inventing their own paths.
+
+Adapter entrypoints:
+- [`scripts/wechat_wewe_rss_import.py`](./scripts/wechat_wewe_rss_import.py) imports WeChat article text from a wewe-rss RSS feed or from manual article exports. Feed targets can be tracked in [`seed/wechat-sources.yaml`](./seed/wechat-sources.yaml).
+- [`scripts/wechat_candidates.py`](./scripts/wechat_candidates.py) extracts candidates from WeChat `full_text.md` artifacts and supports manual promotion into durable `events/wechat/` and `claims/wechat/` records with a promotion log.
+- [`scripts/xiaohongshu_redbook_import.py`](./scripts/xiaohongshu_redbook_import.py) imports Xiaohongshu notes from manual exports, saved redbook JSON payloads, or direct `redbook read/comments` calls when the CLI is installed. Targets can be tracked in [`seed/xiaohongshu-sources.yaml`](./seed/xiaohongshu-sources.yaml).
+- [`scripts/xiaohongshu_video_transcript.py`](./scripts/xiaohongshu_video_transcript.py) adds a tool-agnostic transcript workflow for Xiaohongshu video sources. It writes `transcript-request.md` into the note artifact directory, then later imports a finished `transcript.md` without binding the repo to a specific ASR provider.
+- [`scripts/xiaohongshu_candidates.py`](./scripts/xiaohongshu_candidates.py) extracts candidates from `full_text.md`, `transcript.md`, and `comment_batch.md` for Xiaohongshu sources, and it also supports manual promotion into durable `events/xiaohongshu/` and `claims/xiaohongshu/` records with a promotion log.
+
 ## Main Tracking Lines
 
 ### AI Coding / Agent Workflow

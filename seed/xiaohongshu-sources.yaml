@@ -1,0 +1,16 @@
+targets:
+  - label: 小鹏小红书
+    note_url: ""
+    query: 小鹏 智驾 OTA
+    publisher: 小红书
+    perspective: creator_commentary
+    ingestion_method: redbook_cli
+    notes: Use as a starting query or replace with a concrete note URL.
+  - label: 理想小红书
+    note_url: ""
+    query: 理想 智驾 司机大模型
+    publisher: 小红书
+    perspective: creator_commentary
+    ingestion_method: redbook_cli
+    notes: Use as a starting query or replace with a concrete note URL.
+

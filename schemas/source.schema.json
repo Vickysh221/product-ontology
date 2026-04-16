@@ -5,23 +5,31 @@
   "required": [
     "source_id",
     "source_type",
+    "platform",
     "source_container",
     "publisher",
     "published_at",
     "title",
     "url_or_ref",
+    "source_url",
+    "ingestion_method",
     "perspective",
     "confidence"
   ],
   "properties": {
     "source_id": { "type": "string" },
     "source_type": { "type": "string" },
+    "platform": { "type": "string" },
     "source_container": { "type": "string" },
     "publisher": { "type": "string" },
+    "author_or_speaker": { "type": "string" },
     "published_at": { "type": "string" },
     "title": { "type": "string" },
     "url_or_ref": { "type": "string" },
+    "source_url": { "type": "string" },
+    "canonical_url": { "type": "string" },
     "perspective": { "type": "string" },
-    "confidence": { "type": "string" }
+    "confidence": { "type": "string" },
+    "ingestion_method": { "type": "string" }
   }
 }

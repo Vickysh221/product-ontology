@@ -1,0 +1,111 @@
+brands:
+  OpenAI:
+    sources:
+      - label: blog
+        source_type: official_release
+        platform: official_site
+        url: https://openai.com/news/
+        priority: high
+        notes: Official product launches, research, and company updates.
+      - label: api release notes
+        source_type: official_release
+        platform: official_docs
+        url: https://platform.openai.com/docs/changelog
+        priority: high
+        notes: API and platform changes that may indicate workflow or capability shifts.
+  Anthropic:
+    sources:
+      - label: news
+        source_type: official_release
+        platform: official_site
+        url: https://www.anthropic.com/news
+        priority: high
+        notes: Company and model announcements.
+      - label: docs
+        source_type: official_release
+        platform: official_docs
+        url: https://docs.anthropic.com/
+        priority: medium
+        notes: Docs and feature updates relevant to Claude and APIs.
+  Gemini:
+    sources:
+      - label: google blog
+        source_type: official_release
+        platform: official_site
+        url: https://blog.google/technology/google-deepmind/
+        priority: high
+        notes: Gemini and DeepMind product/news updates.
+      - label: ai studio docs
+        source_type: official_release
+        platform: official_docs
+        url: https://ai.google.dev/gemini-api/docs/changelog
+        priority: high
+        notes: Gemini API release notes and developer changes.
+  Tesla:
+    sources:
+      - label: official news
+        source_type: official_release
+        platform: official_site
+        url: https://www.tesla.com/blog
+        priority: medium
+        notes: Product and company updates.
+      - label: support updates
+        source_type: official_release
+        platform: official_support
+        url: https://www.tesla.com/support/software-updates
+        priority: high
+        notes: Vehicle software and OTA-related support pages.
+  小鹏:
+    sources:
+      - label: 官网新闻
+        source_type: official_release
+        platform: official_site
+        url: https://www.xiaopeng.com/news
+        priority: high
+        notes: 品牌发布、产品能力和战略信息。
+      - label: OTA 页面
+        source_type: official_release
+        platform: official_site
+        url: https://www.xiaopeng.com/ota
+        priority: high
+        notes: OTA 更新和车辆能力变化。
+      - label: 微信公众号
+        source_type: official_social
+        platform: wechat_official_account
+        url: manual://wewe-rss/xiaopeng
+        priority: medium
+        notes: 通过 wewe-rss 接入文本。
+  理想:
+    sources:
+      - label: 官网新闻
+        source_type: official_release
+        platform: official_site
+        url: https://www.lixiang.com/news
+        priority: high
+        notes: 产品、智驾、品牌更新。
+      - label: OTA 页面
+        source_type: official_release
+        platform: official_site
+        url: https://www.lixiang.com/ota
+        priority: high
+        notes: OTA 版本和体验变化。
+      - label: 微信公众号
+        source_type: official_social
+        platform: wechat_official_account
+        url: manual://wewe-rss/li-auto
+        priority: medium
+        notes: 通过 wewe-rss 接入文本。
+  小米汽车:
+    sources:
+      - label: 官网新闻
+        source_type: official_release
+        platform: official_site
+        url: https://www.mi.com/auto
+        priority: high
+        notes: 小米汽车产品和发布信息。
+      - label: 微信公众号
+        source_type: official_social
+        platform: wechat_official_account
+        url: manual://wewe-rss/xiaomi-auto
+        priority: medium
+        notes: 通过 wewe-rss 接入文本。

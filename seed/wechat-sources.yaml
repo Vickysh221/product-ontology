@@ -1,0 +1,16 @@
+accounts:
+  - label: 小鹏微信公众号
+    source_container: XPENG Motors
+    feed_url: ""
+    publisher: 小鹏汽车
+    perspective: official_product
+    ingestion_method: wewe_rss
+    notes: Fill in the RSS or JSON endpoint exposed by your local wewe-rss deployment.
+  - label: 理想微信公众号
+    source_container: 理想汽车
+    feed_url: ""
+    publisher: 理想汽车
+    perspective: official_product
+    ingestion_method: wewe_rss
+    notes: Fill in the RSS or JSON endpoint exposed by your local wewe-rss deployment.
+
