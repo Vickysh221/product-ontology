@@ -7,11 +7,9 @@
 - focus_priority: []
 - special_attention: []
 - target_audience: `team`
-- extra_questions: [`multiagent_paradigm_shift`]
+- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`
+- direction_status: `user_provided`
 - synthesis_ref: `synthesis-podcasts-agent-team-governability-2026-04`
-- review_refs: []
-- verdict_refs: []
-- preserved_tensions: [`harness engineering 到底是工程方法，还是已经进入产品主能力层。`, `multi-agent 到底是稳定范式迁移，还是当前阶段的高级 workflow 包装。`, `企业级多人多agent管理里的治理结构，哪些是安全/合规必要，哪些是效率放大器。`]
 
 ## 标题
 
@@ -21,33 +19,116 @@
 
 给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期
 
-## 摘要
+## 研究问题
 
-这篇报告以“从单 Agent 工具到可治理的 Agent Team：五条一线语料中的编排、协作与企业化信号”为主问题，围绕五条一线播客语料，回答 multi-agent 是否正在从更强的工作流包装，走向可治理的 Agent Team 结构。对团队读者来说，重点不是单个 agent 更聪明，而是多人协作时的分工、交接与治理边界是否开始被产品显式承接。副标题“给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期”对应的判断路径也会被一并展开。
+multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移
 
-## 主判断
+问题来源：用户给定
+
+## 综述导言
+
+本轮先按主题聚类做综述，不按播客顺序复述，也不先给最终判断。 当前可补充的 AI-native UX 观察维度包括：责任, 注意力仲裁, handoff, user goal loop, agent behavior contract, rollback。
+
+## 文献综述
+
+### 主题：强调 Team of Agents、Harness Engineering、AI 发起与 AI 审核闭环。
+
+**Direct quote**  
+[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。随着项目规模增长，代码是否依然可控，才是软件工程的核心挑战。
+
+**Paraphrase**  
+这条材料把“multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移”落到Team of Agents、Harness Engineering、AI 发起与 AI 审核闭环这一层，说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。
+
+**Evidence**  
+- `podwise-ai-7758431-2cd3ef48`
+
+**Why it matters**  
+这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。
+
+### 主题：强调 OpenCore、自主性、持久记忆、协议层与 Agent 产品形态。
+
+**Direct quote**  
+[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。
+
+**Paraphrase**  
+这条材料把“multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移”落到OpenCore、自主性、持久记忆、协议层与 Agent 产品形态这一层，说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。
+
+**Evidence**  
+- `podwise-ai-7718625-7d0dc7d1`
+
+**Why it matters**  
+这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。
+
+### 主题：强调企业版 OpenClaw、多智能体角色定义、协作、安全和权限。
+
+**Direct quote**  
+[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。
+
+**Paraphrase**  
+这条材料把“multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移”落到企业版 OpenClaw、多智能体角色定义、协作、安全和权限这一层，说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。
+
+**Evidence**  
+- `podwise-ai-7635732-bdfba3f3`
+
+**Why it matters**  
+这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。
+
+### 主题：强调异步文档、自动化工作流、AI 团队管理与复利工程。
+
+**Direct quote**  
+[01:16:57] 我认为我这个人是一个一百人的公司。
+
+**Paraphrase**  
+这条材料把“multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移”落到异步文档、自动化工作流、AI 团队管理与复利工程这一层，说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。
+
+**Evidence**  
+- `podwise-ai-7504915-91b52a0e`
+
+**Why it matters**  
+这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。
+
+### 主题：强调沙箱、安全流程、subagent、自动化测试与权限管理。
+
+**Direct quote**  
+[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。
+
+**Paraphrase**  
+这条材料把“multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移”落到沙箱、安全流程、subagent、自动化测试与权限管理这一层，说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。
+
+**Evidence**  
+- `podwise-ai-7368984-f9a0fefa`
+
+**Why it matters**  
+这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。
+
+## 综合判断
 
 五条一线语料共同指向同一条产品演化线：Agent 系统正在从单一能力调用工具，过渡到可治理的 Agent Team。这个变化不是单纯增加更多 Agent 数量，而是把 harness engineering、角色边界、权限控制、自动化测试、异步协作和企业治理结构收束进同一套产品与工作流设计。
 
-## 机制拆解
+## Problem Statement
 
-这组材料共同显示，agent orchestration 的价值并不在于把多个智能体机械排队，而在于把测试、容器、权限、审核与任务分工嵌入执行机制里。一旦这些控制层被稳定地纳入系统设计，multi-agent 就不再只是编排技巧，而开始接近产品能力边界的重新定义。稳定主题里反复出现的 `harness engineering`、范式迁移判断，以及角色与权限边界显式化，说明这次变化已经不只是能力数量增加，而是在重写系统如何被约束、协作和验证。
+这里先提出一个 draft problem statement：如何把 agent 从偶发可用工具，变成可长期协作、可分工、可升级人工、可追责的执行网络？
 
-## 能力边界与工作流变化
+## Assumptions
 
-在 integrated 协作模式下，这里把判断、机制和证据收束进同一条叙事主线。系统从单 agent 响应工具，变成可以在明确边界下分派、回收、校验和交接工作的执行网络。这会把原本隐性的协作约束，例如谁负责审批、谁能调用什么资源、哪些结果需要复核，变成产品结构的一部分。
+### 被材料支持的 assumptions
+1. 自主执行能力的上限取决于 harness，而不只是模型本身。
 
-## 针对本次追问的回答
+### 仍需验证的 assumptions
+1. 这些控制层是否会成为默认产品结构，而不只是高成熟团队的最佳实践。
 
-这里真正要回答的问题是：multi-agent 是否已进入范式迁移期。现有证据已经足以说明这不是简单的 feature 堆叠。五条语料都在重复同一件事：当 agent 需要稳定承担不同角色、在不同权限层运行，并且接受测试与治理约束时，产品形态就从单体助手转向 Agent Team。但这条范式迁移是否已经完全稳定，仍取决于这些控制层能否持续成为默认产品结构，而不是只出现在工程演示或高成熟团队的局部实践中。
+## AI-native UX 视角
 
-## 证据锚点
+- 责任
+- 注意力仲裁
+- handoff
+- user goal loop
+- agent behavior contract
+- rollback
 
-- `podwise-ai-7758431-2cd3ef48`：强调 Team of Agents、Harness Engineering、AI 发起与 AI 审核闭环。 证据锚点：[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。随着项目规模增长，代码是否依然可控，才是软件工程的核心挑战。
-- `podwise-ai-7718625-7d0dc7d1`：强调 OpenCore、自主性、持久记忆、协议层与 Agent 产品形态。 证据锚点：[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。
-- `podwise-ai-7635732-bdfba3f3`：强调企业版 OpenClaw、多智能体角色定义、协作、安全和权限。 证据锚点：[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。
-- `podwise-ai-7504915-91b52a0e`：强调异步文档、自动化工作流、AI 团队管理与复利工程。 证据锚点：[01:16:57] 我认为我这个人是一个一百人的公司。
-- `podwise-ai-7368984-f9a0fefa`：强调沙箱、安全流程、subagent、自动化测试与权限管理。 证据锚点：[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。
+## 本轮 Research Direction
+
+multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移
 
 ## 保留分歧
 

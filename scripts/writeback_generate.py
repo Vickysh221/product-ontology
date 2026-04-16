@@ -529,37 +529,22 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
     if not intake_id:
         raise SystemExit("missing intake_id in intake record")
 
-    collaboration_mode = read_field(intake_text, "collaboration_mode")
-    used_default_rules = read_field(intake_text, "used_default_rules")
-    focus_priority = read_list_field(intake_text, "focus_priority")
-    special_attention = read_list_field(intake_text, "special_attention")
-    target_audience = read_field(intake_text, "target_audience")
-    extra_questions = read_list_field(intake_text, "extra_questions")
-    review_refs = parse_csv(args.review_refs)
-    verdict_refs = parse_csv(args.verdict_refs)
-    synthesis_ref = read_field(synthesis_text, "synthesis_id")
-    preserved_tensions = parse_bullets(read_section(synthesis_text, "保留张力"))
-    sections = build_longform_sections(
-        title=args.title,
-        subtitle=args.subtitle,
-        intake_text=intake_text,
-        synthesis_text=synthesis_text,
-    )
-    preserved_lines = [f"- {item}" for item in preserved_tensions] or ["- none recorded"]
+    research_direction, direction_status = build_research_question(intake_text)
+    review_sections = build_review_pack_sections(intake_text, synthesis_text)
+    ux_lens_points = build_ai_native_ux_lens_pack()
+    ux_body = "\n".join(f"- {point}" for point in ux_lens_points) or "- 暂无 AI-native UX lens point"
     return f"""# Writeback Proposal
 
 - writeback_id: `{args.writeback_id}`
 - intake_id: `{intake_id}`
-- collaboration_mode: `{collaboration_mode}`
-- used_default_rules: `{used_default_rules}`
-- focus_priority: {format_list(focus_priority)}
-- special_attention: {format_list(special_attention)}
-- target_audience: `{target_audience}`
-- extra_questions: {format_list(extra_questions)}
-- synthesis_ref: `{synthesis_ref}`
-- review_refs: {format_list(review_refs)}
-- verdict_refs: {format_list(verdict_refs)}
-- preserved_tensions: {format_preserved_tensions_metadata(preserved_tensions)}
+- collaboration_mode: `{read_field(intake_text, 'collaboration_mode')}`
+- used_default_rules: `{read_field(intake_text, 'used_default_rules')}`
+- focus_priority: {format_list(read_list_field(intake_text, 'focus_priority'))}
+- special_attention: {format_list(read_list_field(intake_text, 'special_attention'))}
+- target_audience: `{read_field(intake_text, 'target_audience')}`
+- research_direction: `{research_direction}`
+- direction_status: `{direction_status}`
+- synthesis_ref: `{read_field(synthesis_text, 'synthesis_id')}`
 
 ## 标题
 
@@ -569,33 +554,41 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
 {args.subtitle}
 
-## 摘要
+## 研究问题
 
-{sections["summary"]}
+{review_sections["question"]}
 
-## 主判断
+## 综述导言
 
-{sections["judgment"]}
+{review_sections["intro"]}
 
-## 机制拆解
+## 文献综述
 
-{sections["mechanism"]}
+{review_sections["review"]}
 
-## 能力边界与工作流变化
+## 综合判断
 
-{sections["workflow"]}
+{read_section(synthesis_text, '核心综合判断')}
 
-## 针对本次追问的回答
+## Problem Statement
 
-{sections["extra"]}
+{review_sections["problem"]}
 
-## 证据锚点
+## Assumptions
 
-{sections["evidence"]}
+{review_sections["assumptions"]}
+
+## AI-native UX 视角
+
+{ux_body}
+
+## 本轮 Research Direction
+
+{research_direction}
 
 ## 保留分歧
 
-{chr(10).join(preserved_lines)}
+{review_sections["tensions"]}
 """
 
 

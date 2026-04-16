@@ -192,12 +192,14 @@ def test_writeback_generate_render_longform_creates_real_sections(tmp_path):
     result, target = run_render_longform(tmp_path)
     assert result.returncode == 0, result.stderr
     text = target.read_text()
-    assert "## 摘要" in text
-    assert "## 主判断" in text
-    assert "## 机制拆解" in text
-    assert "## 能力边界与工作流变化" in text
-    assert "## 针对本次追问的回答" in text
-    assert "## 证据锚点" in text
+    assert "## 研究问题" in text
+    assert "## 综述导言" in text
+    assert "## 文献综述" in text
+    assert "## 综合判断" in text
+    assert "## Problem Statement" in text
+    assert "## Assumptions" in text
+    assert "## AI-native UX 视角" in text
+    assert "## 本轮 Research Direction" in text
     assert "## 保留分歧" in text
 
 
@@ -207,17 +209,15 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     text = target.read_text()
     assert "待补充" not in text
     assert "待由 evidence" not in text
-    assert "## 针对本次追问的回答" in text
-    assert "## 证据锚点" in text
-    assert "- `podwise-ai-7758431-2cd3ef48`" in text
-    assert "- `podwise-ai-7718625-7d0dc7d1`" in text
-    assert "- `podwise-ai-7635732-bdfba3f3`" in text
-    assert "- `podwise-ai-7504915-91b52a0e`" in text
-    assert "- `podwise-ai-7368984-f9a0fefa`" in text
-    assert "- preserved_tensions: [`harness engineering 到底是工程方法，还是已经进入产品主能力层。`" in text
-    assert "``harness engineering`" not in text
-    assert "稳定主题里反复出现的 `harness engineering`、范式迁移判断，以及角色与权限边界显式化" in text
-    assert "这里真正要回答的问题是：multi-agent 是否已进入范式迁移期。" in text
+    assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
+    assert "- direction_status: `user_provided`" in text
+    assert "Direct quote" in text
+    assert "Paraphrase" in text
+    assert "Evidence" in text
+    assert "Why it matters" in text
+    assert "- user goal loop" in text
+    assert "- agent behavior contract" in text
+    assert "- 注意力仲裁" in text
     assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
     assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
     assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
@@ -227,36 +227,20 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
 
 
 def run_render_review_pack(tmp_path):
-    target = tmp_path / "writeback-review-pack.md"
-    result = subprocess.run(
-        [
-            "python3",
-            "scripts/writeback_generate.py",
-            "render-review-pack",
-            "--intake-file",
-            "library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md",
-            "--synthesis-file",
-            "library/syntheses/podcasts/agent-team-governability-2026-04.md",
-            "--output",
-            str(target),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return result, target
+    return run_render_longform(tmp_path)
 
 
 def test_writeback_generate_render_review_pack_creates_research_sections(tmp_path):
     result, target = run_render_review_pack(tmp_path)
     assert result.returncode == 0, result.stderr
     text = target.read_text()
-    assert "## Research Question" in text
-    assert "## Review Introduction" in text
-    assert "## Thematic Literature Review" in text
-    assert "## Counter-Signals And Tensions" in text
-    assert "## Draft Problem Statement" in text
-    assert "## Draft Assumptions" in text
+    assert "## 研究问题" in text
+    assert "## 综述导言" in text
+    assert "## 文献综述" in text
+    assert "## Problem Statement" in text
+    assert "## Assumptions" in text
+    assert "## AI-native UX 视角" in text
+    assert "## 本轮 Research Direction" in text
     assert "multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移" in text
 
 
@@ -278,6 +262,23 @@ def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
     assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
     assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
     assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
+
+
+def test_research_direction_writeback_contains_review_driven_sections(tmp_path):
+    result, target = run_render_longform(tmp_path)
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "## 研究问题" in text
+    assert "## 综述导言" in text
+    assert "## 文献综述" in text
+    assert "Direct quote" in text
+    assert "Paraphrase" in text
+    assert "Evidence" in text
+    assert "Why it matters" in text
+    assert "## Problem Statement" in text
+    assert "## Assumptions" in text
+    assert "## AI-native UX 视角" in text
+    assert "## 本轮 Research Direction" in text
 
 
 def test_materialized_review_pack_has_research_sections():
@@ -311,18 +312,19 @@ def test_materialized_integrated_team_paradigm_is_longform():
     text = Path("library/writebacks/podcasts/matrix/integrated-team-paradigm.md").read_text()
     assert "待补充" not in text
     assert "待由 evidence" not in text
-    assert "## 机制拆解" in text
-    assert "## 能力边界与工作流变化" in text
-    assert "## 针对本次追问的回答" in text
-    assert "podwise-ai-7758431-2cd3ef48" in text
-    assert "podwise-ai-7368984-f9a0fefa" in text
-    assert "- preserved_tensions: [`harness engineering 到底是工程方法，还是已经进入产品主能力层。`" in text
-    assert "``harness engineering`" not in text
-    assert "就本次追问而言，本次追问聚焦于" not in text
-    assert text.count("本次追问") <= 2
-    assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
-    assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
-    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
-    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
-    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
-    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "## 研究问题" in text
+    assert "## 综述导言" in text
+    assert "## 文献综述" in text
+    assert "## 综合判断" in text
+    assert "## Problem Statement" in text
+    assert "## Assumptions" in text
+    assert "## AI-native UX 视角" in text
+    assert "## 本轮 Research Direction" in text
+    assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
+    assert "- direction_status: `user_provided`" in text
+    assert "- user goal loop" in text
+    assert "- agent behavior contract" in text
+    assert "- 注意力仲裁" in text
+    assert "- handoff" in text
+    assert "- rollback" in text
+    assert "- 责任" in text
