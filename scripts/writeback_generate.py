@@ -323,6 +323,88 @@ def render_writeback(args: argparse.Namespace) -> str:
 """
 
 
+def render_longform_writeback(args: argparse.Namespace) -> str:
+    intake_path = Path(args.intake_file)
+    synthesis_path = Path(args.synthesis_file)
+    try:
+        intake_text = read_file(intake_path)
+    except OSError:
+        raise SystemExit("missing or unreadable intake file")
+    try:
+        synthesis_text = read_file(synthesis_path)
+    except OSError:
+        raise SystemExit("missing or unreadable synthesis file")
+
+    intake_id = read_field(intake_text, "intake_id")
+    if not intake_id:
+        raise SystemExit("missing intake_id in intake record")
+
+    collaboration_mode = read_field(intake_text, "collaboration_mode")
+    used_default_rules = read_field(intake_text, "used_default_rules")
+    target_audience = read_field(intake_text, "target_audience")
+    extra_questions = read_list_field(intake_text, "extra_questions")
+    review_refs = parse_csv(args.review_refs)
+    verdict_refs = parse_csv(args.verdict_refs)
+    synthesis_id = read_field(synthesis_text, "synthesis_id")
+    preserved_tensions = parse_bullets(read_section(synthesis_text, "保留张力"))
+    sections = build_longform_sections(
+        title=args.title,
+        subtitle=args.subtitle,
+        intake_text=intake_text,
+        synthesis_text=synthesis_text,
+    )
+    preserved_lines = [f"- {item}" for item in preserved_tensions] or ["- none recorded"]
+    return f"""# Writeback Proposal
+
+- writeback_id: `{args.writeback_id}`
+- intake_id: `{intake_id}`
+- synthesis_id: `{synthesis_id}`
+- collaboration_mode: `{collaboration_mode}`
+- used_default_rules: `{used_default_rules}`
+- target_audience: `{target_audience}`
+- extra_questions: {format_list(extra_questions)}
+- review_refs: {format_list(review_refs)}
+- verdict_refs: {format_list(verdict_refs)}
+- preserved_tensions: {format_list(preserved_tensions)}
+
+## 标题
+
+{args.title}
+
+## 副标题
+
+{args.subtitle}
+
+## 摘要
+
+{sections["summary"]}
+
+## 主判断
+
+{sections["judgment"]}
+
+## 机制拆解
+
+{sections["mechanism"]}
+
+## 能力边界与工作流变化
+
+{sections["workflow"]}
+
+## 针对本次追问的回答
+
+{sections["extra"]}
+
+## 证据锚点
+
+{sections["evidence"]}
+
+## 保留分歧
+
+{chr(10).join(preserved_lines)}
+"""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -337,14 +419,25 @@ def main() -> int:
     render.add_argument("--review-refs", default="")
     render.add_argument("--verdict-refs", default="")
     render.add_argument("--preserved-tensions", default="")
+    render_longform = subparsers.add_parser("render-longform")
+    render_longform.add_argument("--writeback-id", required=True)
+    render_longform.add_argument("--intake-file", required=True)
+    render_longform.add_argument("--synthesis-file", required=True)
+    render_longform.add_argument("--output", required=True)
+    render_longform.add_argument("--title", required=True)
+    render_longform.add_argument("--subtitle", default="")
+    render_longform.add_argument("--review-refs", default="")
+    render_longform.add_argument("--verdict-refs", default="")
     args = parser.parse_args()
-
-    if args.command != "render":
-        return 1
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(render_writeback(args))
+    if args.command == "render":
+        output.write_text(render_writeback(args))
+        return 0
+    if args.command == "render-longform":
+        output.write_text(render_longform_writeback(args))
+        return 0
     return 0
 
 
