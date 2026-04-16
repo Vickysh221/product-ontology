@@ -25,7 +25,11 @@ def format_list(values: list[str]) -> str:
 
 
 def render_writeback(args: argparse.Namespace) -> str:
-    intake_text = Path(args.intake_file).read_text()
+    intake_path = Path(args.intake_file)
+    try:
+        intake_text = intake_path.read_text()
+    except OSError:
+        raise SystemExit("missing or unreadable intake file")
     intake_id = read_field(intake_text, "intake_id")
     if not intake_id:
         raise SystemExit("missing intake_id in intake record")
