@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PatternRecord",
+  "type": "object",
+  "required": [
+    "pattern_id",
+    "pattern_name",
+    "abstraction",
+    "supported_by_claims",
+    "evidence_refs",
+    "status",
+    "confidence"
+  ],
+  "properties": {
+    "pattern_id": { "type": "string" },
+    "pattern_name": { "type": "string" },
+    "abstraction": { "type": "string" },
+    "supported_by_claims": { "type": "array", "items": { "type": "string" } },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "status": { "type": "string" },
+    "confidence": { "type": "string" }
+  }
+}

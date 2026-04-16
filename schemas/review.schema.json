@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewRecord",
+  "type": "object",
+  "required": [
+    "review_id",
+    "lens",
+    "target_type",
+    "target_id",
+    "produces_verdict_id"
+  ],
+  "properties": {
+    "review_id": { "type": "string" },
+    "lens": {
+      "type": "string",
+      "enum": [
+        "product",
+        "ux_collaboration",
+        "tech",
+        "user_reality",
+        "business",
+        "brand",
+        "contrarian",
+        "governance"
+      ]
+    },
+    "target_type": {
+      "type": "string",
+      "enum": ["claim", "pattern", "thesis"]
+    },
+    "target_id": { "type": "string" },
+    "produces_verdict_id": { "type": "string" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "review_notes": { "type": "string" }
+  }
+}

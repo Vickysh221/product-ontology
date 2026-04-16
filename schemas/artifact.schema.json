@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactRecord",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "source_id",
+    "slice_type",
+    "quote_or_segment",
+    "location",
+    "perspective",
+    "why_relevant"
+  ],
+  "properties": {
+    "artifact_id": { "type": "string" },
+    "source_id": { "type": "string" },
+    "slice_type": { "type": "string" },
+    "quote_or_segment": { "type": "string" },
+    "location": { "type": "string" },
+    "perspective": { "type": "string" },
+    "why_relevant": { "type": "string" }
+  }
+}
