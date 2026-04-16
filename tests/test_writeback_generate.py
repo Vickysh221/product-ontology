@@ -159,3 +159,73 @@ def test_writeback_generate_renders_audience_and_subtitle(tmp_path):
     assert "## 副标题" in text
     assert "副标题" in text
     assert "- synthesis_ref: `synthesis-demo`" in text
+
+
+def test_writeback_generate_render_longform_creates_real_sections(tmp_path):
+    target = tmp_path / "writeback-longform.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render-longform",
+            "--writeback-id",
+            "writeback-integrated-team-paradigm",
+            "--intake-file",
+            "library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md",
+            "--synthesis-file",
+            "library/syntheses/podcasts/agent-team-governability-2026-04.md",
+            "--output",
+            str(target),
+            "--title",
+            "从单 Agent 工具到可治理的 Agent Team：五条一线语料中的编排、协作与企业化信号",
+            "--subtitle",
+            "给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "## 摘要" in text
+    assert "## 主判断" in text
+    assert "## 机制拆解" in text
+    assert "## 能力边界与工作流变化" in text
+    assert "## 针对本次追问的回答" in text
+    assert "## 证据锚点" in text
+    assert "## 保留分歧" in text
+
+
+def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholders(tmp_path):
+    target = tmp_path / "writeback-longform.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render-longform",
+            "--writeback-id",
+            "writeback-integrated-team-paradigm",
+            "--intake-file",
+            "library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md",
+            "--synthesis-file",
+            "library/syntheses/podcasts/agent-team-governability-2026-04.md",
+            "--output",
+            str(target),
+            "--title",
+            "从单 Agent 工具到可治理的 Agent Team：五条一线语料中的编排、协作与企业化信号",
+            "--subtitle",
+            "给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "待补充" not in text
+    assert "待由 evidence" not in text
+    assert "podwise-ai-7758431-2cd3ef48" in text
+    assert "podwise-ai-7718625-7d0dc7d1" in text
+    assert "podwise-ai-7635732-bdfba3f3" in text
+    assert "podwise-ai-7504915-91b52a0e" in text
+    assert "podwise-ai-7368984-f9a0fefa" in text
