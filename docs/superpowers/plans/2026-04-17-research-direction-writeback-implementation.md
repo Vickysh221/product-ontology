@@ -677,7 +677,7 @@ python3 scripts/writeback_generate.py render-longform \
 ```
 ```
 
-- [ ] **Step 2: Run the full relevant test set**
+- [x] **Step 2: Run the full relevant test set**
 
 Run:
 

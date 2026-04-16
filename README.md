@@ -117,6 +117,8 @@ python3 scripts/writeback_generate.py render-longform \
 
 ### 生成 research-direction writeback
 
+This flow adds a review pack intermediate step; the earlier direct `render-longform` path remains available for the single-pilot longform workflow.
+
 先渲染 review pack：
 
 ```bash
