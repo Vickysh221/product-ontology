@@ -87,3 +87,11 @@ def test_writeback_generate_with_default_intake(tmp_path):
     assert "- intake_id: `intake-demo`" in text
     assert "- used_default_rules: `true`" in text
     assert "## 评审视角" in text
+
+
+def test_sample_writeback_records_intake_and_reviews():
+    text = Path("library/writebacks/2026-04-16-xiaopeng-v2a-explainability-writeback.md").read_text()
+    assert "- intake_id:" in text
+    assert "- review_refs:" in text
+    assert "- verdict_refs:" in text
+    assert "## 评审视角" in text

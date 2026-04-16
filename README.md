@@ -96,6 +96,13 @@ Directory responsibilities:
 5. Use review records to adjust the status of claims, patterns, and theses rather than rewriting history.
 6. Treat artifact, counterclaim, thesis, and verdict layers as upcoming repository additions until those files exist in the tree.
 
+Writeback commands:
+
+```bash
+python3 scripts/writeback_intake.py create --intake-id <intake-id> --output <path> --use-defaults
+python3 scripts/writeback_generate.py render --writeback-id <writeback-id> --intake-file <path> --output <path> --title <title> --summary <summary>
+```
+
 ## Podcast Ingestion
 
 This repository includes a phase-1 Podwise ingestion flow for podcast and video episode materials.
