@@ -7,6 +7,10 @@ import sys
 from pathlib import Path
 
 
+def read_file(path: str | Path) -> str:
+    return Path(path).read_text(encoding="utf-8")
+
+
 def read_field(text: str, field: str) -> str:
     match = re.search(rf"- {re.escape(field)}: `(.*?)`", text)
     return match.group(1) if match else ""
@@ -31,10 +35,99 @@ def format_list(values: list[str]) -> str:
     return "[" + ", ".join(f"`{value}`" for value in values) + "]"
 
 
+def read_section(text: str, heading: str) -> str:
+    lines = text.splitlines()
+    heading_index = None
+    heading_level = 0
+    for index, line in enumerate(lines):
+        match = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
+        if match and match.group(2).strip() == heading:
+            heading_index = index
+            heading_level = len(match.group(1))
+            break
+    if heading_index is None:
+        return ""
+
+    section_lines: list[str] = []
+    for line in lines[heading_index + 1 :]:
+        match = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
+        if match and len(match.group(1)) <= heading_level:
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines).strip()
+
+
+def parse_bullets(section_text: str) -> list[str]:
+    bullets: list[str] = []
+    current: list[str] | None = None
+    for line in section_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        match = re.match(r"^[-*]\s+(.*)$", stripped)
+        if match:
+            if current is not None:
+                bullets.append(" ".join(current).strip())
+            current = [match.group(1).strip()]
+            continue
+        if current is not None:
+            current.append(stripped)
+    if current is not None:
+        bullets.append(" ".join(current).strip())
+    return bullets
+
+
+def collect_episode_slugs(synthesis_text: str) -> list[str]:
+    evidence_section = read_section(synthesis_text, "证据汇总")
+    slugs: list[str] = []
+    for bullet in parse_bullets(evidence_section):
+        match = re.search(r"`([^`]+)`", bullet)
+        if not match:
+            match = re.search(r"(podwise-ai-[a-z0-9-]+)", bullet)
+        if not match:
+            continue
+        slug = match.group(1).strip()
+        if slug not in slugs:
+            slugs.append(slug)
+    return slugs
+
+
+def build_episode_role_map(synthesis_text: str) -> dict[str, str]:
+    evidence_section = read_section(synthesis_text, "证据汇总")
+    role_map: dict[str, str] = {}
+    for bullet in parse_bullets(evidence_section):
+        match = re.search(r"`([^`]+)`\s*(.*)$", bullet)
+        if not match:
+            match = re.search(r"(podwise-ai-[a-z0-9-]+)\s*(.*)$", bullet)
+        if not match:
+            continue
+        slug = match.group(1).strip()
+        role_text = match.group(2).strip()
+        if role_text.startswith("：") or role_text.startswith(":"):
+            role_text = role_text[1:].strip()
+        if role_text.startswith("-"):
+            role_text = role_text[1:].strip()
+        role_map[slug] = role_text
+    return role_map
+
+
+def collect_evidence_for_episode(slug: str) -> list[str]:
+    base_dir = Path("library/artifacts/podcasts") / slug
+    summary_lines: list[str] = []
+    highlights_lines: list[str] = []
+    summary_path = base_dir / "summary.md"
+    highlights_path = base_dir / "highlights.md"
+    if summary_path.exists():
+        summary_lines = [line.strip() for line in read_file(summary_path).splitlines() if line.strip()][:8]
+    if highlights_path.exists():
+        highlights_lines = [line.strip() for line in read_file(highlights_path).splitlines() if line.strip()][:8]
+    return summary_lines + highlights_lines
+
+
 def render_writeback(args: argparse.Namespace) -> str:
     intake_path = Path(args.intake_file)
     try:
-        intake_text = intake_path.read_text()
+        intake_text = read_file(intake_path)
     except OSError:
         raise SystemExit("missing or unreadable intake file")
     intake_id = read_field(intake_text, "intake_id")
