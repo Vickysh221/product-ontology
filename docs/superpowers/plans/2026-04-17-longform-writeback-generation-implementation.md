@@ -557,18 +557,18 @@ git commit -m "feat: materialize longform integrated team writeback"
 - Modify: `docs/superpowers/plans/2026-04-17-longform-writeback-generation-implementation.md`
 - Read: `library/writebacks/podcasts/matrix/integrated-team-paradigm.md`
 
-- [ ] **Step 1: Run the full relevant test set**
+- [x] **Step 1: Run the full relevant test set**
 
 Run:
 
 ```bash
-"/Users/vickyshou/.local/bin/uv" run --offline --with pytest python -m pytest tests/test_writeback_intake.py tests/test_writeback_generate.py tests/test_writeback_matrix.py -v
+"/Users/vickyshou/.local/bin/uv" run --offline --with pytest --with pyyaml python -m pytest tests/test_writeback_intake.py tests/test_writeback_generate.py tests/test_writeback_matrix.py -v
 ```
 
 Expected:
 - PASS for all relevant writeback tests
 
-- [ ] **Step 2: Smoke-check the pilot output for required properties**
+- [x] **Step 2: Smoke-check the pilot output for required properties**
 
 Run:
 
@@ -609,7 +609,7 @@ PY
 Expected:
 - all checks print `PASS`
 
-- [ ] **Step 3: Add a short implementation note to the plan file after execution**
+- [x] **Step 3: Add a short implementation note to the plan file after execution**
 
 Append this note after execution:
 
@@ -622,7 +622,7 @@ Append this note after execution:
 - the remaining 11 matrix variants still require a follow-up rollout plan
 ```
 
-- [ ] **Step 4: Commit the verification pass**
+- [x] **Step 4: Commit the verification pass**
 
 ```bash
 git add docs/superpowers/plans/2026-04-17-longform-writeback-generation-implementation.md
