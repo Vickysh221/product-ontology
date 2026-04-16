@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import yaml
 
 
@@ -55,3 +56,46 @@ def test_shared_synthesis_mentions_all_five_episode_slugs():
         "podwise-ai-7368984-f9a0fefa",
     ]:
         assert slug in text
+
+
+def test_writeback_matrix_cli_generates_intake_records(tmp_path):
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_matrix.py",
+            "generate-intakes",
+            "--config",
+            "seed/writeback-matrix-test.yaml",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert len(list(tmp_path.glob("*.md"))) == 12
+
+
+def test_writeback_matrix_cli_generates_writebacks(tmp_path):
+    intake_dir = tmp_path / "intakes"
+    writeback_dir = tmp_path / "writebacks"
+    intake_dir.mkdir()
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_matrix.py",
+            "generate-all",
+            "--config",
+            "seed/writeback-matrix-test.yaml",
+            "--intake-dir",
+            str(intake_dir),
+            "--writeback-dir",
+            str(writeback_dir),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert len(list(writeback_dir.glob("*.md"))) == 12
