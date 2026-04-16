@@ -78,6 +78,10 @@ def parse_bullets(section_text: str) -> list[str]:
 
 
 def collect_episode_slugs(synthesis_text: str) -> list[str]:
+    source_episode_slugs = read_list_field(synthesis_text, "source_episode_slugs")
+    if source_episode_slugs:
+        return source_episode_slugs
+
     evidence_section = read_section(synthesis_text, "证据汇总")
     slugs: list[str] = []
     for bullet in parse_bullets(evidence_section):
@@ -111,7 +115,7 @@ def build_episode_role_map(synthesis_text: str) -> dict[str, str]:
     return role_map
 
 
-def collect_evidence_for_episode(slug: str) -> list[str]:
+def collect_evidence_for_episode(slug: str) -> dict[str, list[str]]:
     base_dir = Path("library/artifacts/podcasts") / slug
     summary_lines: list[str] = []
     highlights_lines: list[str] = []
@@ -123,7 +127,84 @@ def collect_evidence_for_episode(slug: str) -> list[str]:
     if highlights_path.exists():
         highlights_content = read_section(read_file(highlights_path), "Content")
         highlights_lines = [line.strip() for line in highlights_content.splitlines() if line.strip()][:8]
-    return summary_lines + highlights_lines
+    return {
+        "summary": summary_lines,
+        "highlights": highlights_lines,
+    }
+
+
+def build_longform_outline(intake_text: str, synthesis_text: str) -> dict[str, object]:
+    collaboration_mode = read_field(intake_text, "collaboration_mode")
+    target_audience = read_field(intake_text, "target_audience")
+    extra_questions = read_list_field(intake_text, "extra_questions")
+    core_judgment = read_section(synthesis_text, "核心综合判断")
+    stable_themes = parse_bullets(read_section(synthesis_text, "稳定主题"))
+    preserved_tensions = parse_bullets(read_section(synthesis_text, "保留张力"))
+    return {
+        "collaboration_mode": collaboration_mode,
+        "target_audience": target_audience,
+        "extra_questions": extra_questions,
+        "core_judgment": core_judgment,
+        "stable_themes": stable_themes,
+        "preserved_tensions": preserved_tensions,
+    }
+
+
+def build_longform_sections(
+    title: str,
+    subtitle: str,
+    intake_text: str,
+    synthesis_text: str,
+) -> dict[str, str]:
+    outline = build_longform_outline(intake_text, synthesis_text)
+    role_map = build_episode_role_map(synthesis_text)
+    episode_slugs = collect_episode_slugs(synthesis_text)
+    evidence_lines: list[str] = []
+    for slug in episode_slugs:
+        role = role_map.get(slug, "")
+        evidence = collect_evidence_for_episode(slug)
+        anchor = ""
+        if evidence["highlights"]:
+            anchor = evidence["highlights"][0]
+        elif evidence["summary"]:
+            anchor = evidence["summary"][0]
+        evidence_lines.append(f"- `{slug}`：{role} 证据锚点：{anchor}")
+
+    summary = (
+        "这篇报告围绕五条一线播客语料，回答 multi-agent 是否正在从更强的工作流包装，"
+        "走向可治理的 Agent Team 结构。对于团队协作来说，关键变化不只是 agent 数量增加，"
+        "而是 harness engineering、角色边界、权限控制和异步协作被收束进同一条产品主链。"
+    )
+    judgment = str(outline["core_judgment"])
+    mechanism = (
+        "这组材料共同显示，agent orchestration 的价值并不在于把多个智能体机械排队，"
+        "而在于把测试、容器、权限、审核与任务分工嵌入执行机制里。"
+        "一旦这些控制层被稳定地纳入系统设计，multi-agent 就不再只是编排技巧，"
+        "而开始接近产品能力边界的重新定义。"
+    )
+    workflow = (
+        "对团队而言，这种变化直接影响工作流。系统从单 agent 响应工具，"
+        "变成可以在明确边界下分派、回收、校验和交接工作的执行网络。"
+        "这会把原本隐性的协作约束，例如谁负责审批、谁能调用什么资源、"
+        "哪些结果需要复核，变成产品结构的一部分。"
+    )
+    extra = (
+        "就本次追问而言，现有证据已经足以说明这不是简单的 feature 堆叠。"
+        "五条语料都在重复同一件事：当 agent 需要稳定承担不同角色、"
+        "在不同权限层运行，并且接受测试与治理约束时，产品形态就从单体助手转向 Agent Team。"
+        "但这条范式迁移是否已经完全稳定，仍取决于这些控制层能否持续成为默认产品结构，"
+        "而不是只出现在工程演示或高成熟团队的局部实践中。"
+    )
+    tensions = "\n".join(f"- {item}" for item in outline["preserved_tensions"])
+    return {
+        "summary": summary,
+        "judgment": judgment,
+        "mechanism": mechanism,
+        "workflow": workflow,
+        "extra": extra,
+        "evidence": "\n".join(evidence_lines),
+        "tensions": tensions,
+    }
 
 
 def render_writeback(args: argparse.Namespace) -> str:
