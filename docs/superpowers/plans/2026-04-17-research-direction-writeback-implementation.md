@@ -688,7 +688,7 @@ Run:
 Expected:
 - PASS
 
-- [ ] **Step 3: Add implementation notes to this plan**
+- [x] **Step 3: Add implementation notes to this plan**
 
 Append:
 
@@ -701,7 +701,7 @@ Append:
 - AI-native UX is the only MVP interpretive lens in this pass
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md docs/superpowers/plans/2026-04-17-research-direction-writeback-implementation.md
@@ -726,3 +726,10 @@ Type consistency:
 - `research_direction` and `direction_status` are used consistently
 - command names are consistently `render-review-pack` and `render-longform`
 - the pilot paths are consistent across all tasks
+
+## Implementation Notes
+
+- this rollout intentionally upgrades only one pilot writeback
+- matrix-wide regeneration is explicitly out of scope
+- the new default chain is `research direction -> review pack -> writeback`
+- AI-native UX is the only MVP interpretive lens in this pass

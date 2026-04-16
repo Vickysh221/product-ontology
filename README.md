@@ -115,6 +115,20 @@ python3 scripts/writeback_generate.py render-longform \
   --subtitle "给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期"
 ```
 
+### 生成 research-direction writeback
+
+先渲染 review pack：
+
+```bash
+python3 scripts/writeback_generate.py render-review-pack --intake-file library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md --synthesis-file library/syntheses/podcasts/agent-team-governability-2026-04.md --output library/review-packs/podcasts/review-pack-agent-team-paradigm.md
+```
+
+再渲染 final writeback：
+
+```bash
+python3 scripts/writeback_generate.py render-longform --writeback-id writeback-integrated-team-paradigm --intake-file library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md --synthesis-file library/syntheses/podcasts/agent-team-governability-2026-04.md --output library/writebacks/podcasts/matrix/integrated-team-paradigm.md --title "从单 Agent 工具到可治理的 Agent Team：五条一线语料中的编排、协作与企业化信号" --subtitle "给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期"
+```
+
 Canonical sample:
 - `library/writebacks/2026-04-16-xiaopeng-v2a-explainability-writeback.md`
 
