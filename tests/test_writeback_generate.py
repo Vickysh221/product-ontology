@@ -211,10 +211,15 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     assert "待由 evidence" not in text
     assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
     assert "- direction_status: `user_provided`" in text
-    assert "Direct quote" in text
-    assert "Paraphrase" in text
-    assert "Evidence" in text
-    assert "Why it matters" in text
+    assert "代表引文：" in text
+    assert "观察：" in text
+    assert "证据来源：" in text
+    assert "为什么重要：" in text
+    assert "Direct quote" not in text
+    assert "Paraphrase" not in text
+    assert "Evidence" not in text
+    assert "Why it matters" not in text
+    assert "## Review Introduction" not in text
     assert "- user goal loop" in text
     assert "- agent behavior contract" in text
     assert "- 注意力仲裁" in text
@@ -227,20 +232,36 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
 
 
 def run_render_review_pack(tmp_path):
-    return run_render_longform(tmp_path)
+    target = tmp_path / "writeback-review-pack.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render-review-pack",
+            "--intake-file",
+            "library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md",
+            "--synthesis-file",
+            "library/syntheses/podcasts/agent-team-governability-2026-04.md",
+            "--output",
+            str(target),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result, target
 
 
 def test_writeback_generate_render_review_pack_creates_research_sections(tmp_path):
     result, target = run_render_review_pack(tmp_path)
     assert result.returncode == 0, result.stderr
     text = target.read_text()
-    assert "## 研究问题" in text
-    assert "## 综述导言" in text
-    assert "## 文献综述" in text
-    assert "## Problem Statement" in text
-    assert "## Assumptions" in text
-    assert "## AI-native UX 视角" in text
-    assert "## 本轮 Research Direction" in text
+    assert "## Research Question" in text
+    assert "## Review Introduction" in text
+    assert "## Thematic Literature Review" in text
+    assert "## Counter-Signals And Tensions" in text
+    assert "## Draft Problem Statement" in text
+    assert "## Draft Assumptions" in text
     assert "multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移" in text
 
 
@@ -271,14 +292,20 @@ def test_research_direction_writeback_contains_review_driven_sections(tmp_path):
     assert "## 研究问题" in text
     assert "## 综述导言" in text
     assert "## 文献综述" in text
-    assert "Direct quote" in text
-    assert "Paraphrase" in text
-    assert "Evidence" in text
-    assert "Why it matters" in text
+    assert "代表引文：" in text
+    assert "观察：" in text
+    assert "证据来源：" in text
+    assert "为什么重要：" in text
     assert "## Problem Statement" in text
     assert "## Assumptions" in text
     assert "## AI-native UX 视角" in text
     assert "## 本轮 Research Direction" in text
+    assert "Direct quote" not in text
+    assert "Paraphrase" not in text
+    assert "Evidence" not in text
+    assert "Why it matters" not in text
+    assert "## Research Question" not in text
+    assert "## Review Introduction" not in text
 
 
 def test_materialized_review_pack_has_research_sections():
@@ -322,6 +349,16 @@ def test_materialized_integrated_team_paradigm_is_longform():
     assert "## 本轮 Research Direction" in text
     assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
     assert "- direction_status: `user_provided`" in text
+    assert "### 线索 1：" in text
+    assert "代表引文：" in text
+    assert "观察：" in text
+    assert "证据来源：" in text
+    assert "为什么重要：" in text
+    assert "Direct quote" not in text
+    assert "Paraphrase" not in text
+    assert "Evidence" not in text
+    assert "Why it matters" not in text
+    assert "## Review Introduction" not in text
     assert "- user goal loop" in text
     assert "- agent behavior contract" in text
     assert "- 注意力仲裁" in text

@@ -368,6 +368,128 @@ def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[st
     }
 
 
+def parse_review_theme_blocks(review_text: str) -> list[dict[str, str]]:
+    blocks: list[dict[str, str]] = []
+    for chunk in review_text.split("### 主题：")[1:]:
+        lines = chunk.strip().splitlines()
+        if not lines:
+            continue
+        block = {
+            "title": lines[0].strip(),
+            "quote": "",
+            "paraphrase": "",
+            "evidence": "",
+            "why": "",
+        }
+        current_key = ""
+        for line in lines[1:]:
+            stripped = line.strip()
+            if stripped == "**Direct quote**":
+                current_key = "quote"
+                continue
+            if stripped == "**Paraphrase**":
+                current_key = "paraphrase"
+                continue
+            if stripped == "**Evidence**":
+                current_key = "evidence"
+                continue
+            if stripped == "**Why it matters**":
+                current_key = "why"
+                continue
+            if not stripped or not current_key:
+                continue
+            if block[current_key]:
+                block[current_key] += "\n" + stripped
+            else:
+                block[current_key] = stripped
+        blocks.append(block)
+    return blocks
+
+
+def build_writeback_literature_review(review_text: str) -> str:
+    sections: list[str] = []
+    for index, block in enumerate(parse_review_theme_blocks(review_text), start=1):
+        theme_label = normalize_review_theme_label(block["title"])
+        evidence_ref = block["evidence"]
+        if evidence_ref.startswith("- "):
+            evidence_ref = evidence_ref[2:].strip()
+        sections.append(
+            "\n".join(
+                [
+                    f"### 线索 {index}：{theme_label}",
+                    "",
+                    f"代表引文：{block['quote']}",
+                    "",
+                    f"观察：{block['paraphrase']}",
+                    "",
+                    f"证据来源：{evidence_ref}",
+                    "",
+                    f"为什么重要：{block['why']}",
+                ]
+            )
+        )
+    return "\n\n".join(sections)
+
+
+def build_writeback_assumptions(assumptions_text: str) -> str:
+    supported: list[str] = []
+    pending: list[str] = []
+    target = None
+    for line in assumptions_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped == "### 被材料支持的 assumptions":
+            target = supported
+            continue
+        if stripped == "### 仍需验证的 assumptions":
+            target = pending
+            continue
+        if target is not None:
+            target.append(re.sub(r"^\d+\.\s*", "", stripped))
+
+    sections: list[str] = []
+    if supported:
+        sections.append("当前工作假设\n" + "\n".join(f"- {item}" for item in supported))
+    if pending:
+        sections.append("仍待验证\n" + "\n".join(f"- {item}" for item in pending))
+    return "\n\n".join(sections)
+
+
+def build_writeback_problem(problem_text: str) -> str:
+    draft_prefix = "这里先提出一个 draft problem statement："
+    core_problem = problem_text
+    if problem_text.startswith(draft_prefix):
+        core_problem = problem_text[len(draft_prefix) :].strip()
+    return (
+        "如果把这组材料转写成一个真正的产品问题，核心已经不是再增加多少个 agent 或多少条自动化链路，"
+        f"而是{core_problem}"
+    )
+
+
+def build_writeback_intro(review_intro: str, ux_lens_points: list[str]) -> str:
+    intro_lead = review_intro.split(" 当前可补充的 AI-native UX 观察维度包括：")[0].strip()
+    if not ux_lens_points:
+        return intro_lead
+    return (
+        f"{intro_lead} 这意味着这份 writeback 不再把材料当成播客摘要，而是把它们视为同一产品方向的多点证据。"
+        f"在阅读过程中，会特别参考 {', '.join(ux_lens_points[:3])} 等 AI-native UX 维度来判断协作与治理是否已经进入产品主结构。"
+    )
+
+
+def build_writeback_research_direction(research_direction: str, direction_status: str) -> str:
+    question_source_map = {
+        "user_provided": "用户给定",
+        "system_suggested_pending": "系统建议，待用户批准",
+        "system_suggested_approved": "系统建议，已批准",
+    }
+    return (
+        "这轮 writeback 不把问题视为已经闭合的结论，而是把它保留成下一轮持续跟踪的研究方向：\n"
+        f"- 研究方向：{research_direction}\n"
+        f"- 当前状态：{question_source_map.get(direction_status, direction_status)}"
+    )
+
+
 def build_longform_sections(
     title: str,
     subtitle: str,
@@ -533,6 +655,11 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
     review_sections = build_review_pack_sections(intake_text, synthesis_text)
     ux_lens_points = build_ai_native_ux_lens_pack()
     ux_body = "\n".join(f"- {point}" for point in ux_lens_points) or "- 暂无 AI-native UX lens point"
+    intro_body = build_writeback_intro(review_sections["intro"], ux_lens_points)
+    literature_review = build_writeback_literature_review(review_sections["review"])
+    problem_body = build_writeback_problem(review_sections["problem"])
+    assumptions_body = build_writeback_assumptions(review_sections["assumptions"])
+    research_direction_body = build_writeback_research_direction(research_direction, direction_status)
     return f"""# Writeback Proposal
 
 - writeback_id: `{args.writeback_id}`
@@ -560,11 +687,11 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
 ## 综述导言
 
-{review_sections["intro"]}
+{intro_body}
 
 ## 文献综述
 
-{review_sections["review"]}
+{literature_review}
 
 ## 综合判断
 
@@ -572,19 +699,21 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
 ## Problem Statement
 
-{review_sections["problem"]}
+{problem_body}
 
 ## Assumptions
 
-{review_sections["assumptions"]}
+{assumptions_body}
 
 ## AI-native UX 视角
+
+从 AI-native UX 角度看，这组材料共同把讨论从“agent 会不会做事”推进到“人如何与 agent 可靠分工”。当前最值得保留的观察维度包括：
 
 {ux_body}
 
 ## 本轮 Research Direction
 
-{research_direction}
+{research_direction_body}
 
 ## 保留分歧
 
