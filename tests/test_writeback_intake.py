@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import subprocess
 
 
 def test_writeback_intake_schema_exists():
@@ -25,3 +26,55 @@ def test_writeback_intake_schema_matches_relaxed_requirements():
         None,
     ]
     assert "used_default_rules" in schema["properties"]
+
+
+def test_writeback_intake_cli_writes_default_record(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-demo",
+            "--output",
+            str(target),
+            "--use-defaults",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- intake_id: `intake-demo`" in text
+    assert "- used_default_rules: `true`" in text
+
+
+def test_writeback_intake_cli_preserves_user_fields(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-demo",
+            "--output",
+            str(target),
+            "--collaboration-mode",
+            "sectioned",
+            "--focus-priority",
+            "mechanism,user_trust",
+            "--special-attention",
+            "memory continuity",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- collaboration_mode: `sectioned`" in text
+    assert "- used_default_rules: `false`" in text
+    assert "`mechanism`" in text and "`user_trust`" in text
