@@ -341,11 +341,13 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
     collaboration_mode = read_field(intake_text, "collaboration_mode")
     used_default_rules = read_field(intake_text, "used_default_rules")
+    focus_priority = read_list_field(intake_text, "focus_priority")
+    special_attention = read_list_field(intake_text, "special_attention")
     target_audience = read_field(intake_text, "target_audience")
     extra_questions = read_list_field(intake_text, "extra_questions")
     review_refs = parse_csv(args.review_refs)
     verdict_refs = parse_csv(args.verdict_refs)
-    synthesis_id = read_field(synthesis_text, "synthesis_id")
+    synthesis_ref = read_field(synthesis_text, "synthesis_id")
     preserved_tensions = parse_bullets(read_section(synthesis_text, "保留张力"))
     sections = build_longform_sections(
         title=args.title,
@@ -358,11 +360,13 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
 - writeback_id: `{args.writeback_id}`
 - intake_id: `{intake_id}`
-- synthesis_id: `{synthesis_id}`
 - collaboration_mode: `{collaboration_mode}`
 - used_default_rules: `{used_default_rules}`
+- focus_priority: {format_list(focus_priority)}
+- special_attention: {format_list(special_attention)}
 - target_audience: `{target_audience}`
 - extra_questions: {format_list(extra_questions)}
+- synthesis_ref: `{synthesis_ref}`
 - review_refs: {format_list(review_refs)}
 - verdict_refs: {format_list(verdict_refs)}
 - preserved_tensions: {format_list(preserved_tensions)}
