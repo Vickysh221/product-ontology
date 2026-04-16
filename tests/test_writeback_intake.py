@@ -179,3 +179,30 @@ def test_writeback_intake_cli_records_research_direction_and_status(tmp_path):
     text = target.read_text()
     assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装进入可治理的 Agent Team 范式迁移`" in text
     assert "- direction_status: `user_provided`" in text
+
+
+def test_writeback_intake_cli_research_direction_disables_default_rules(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-research-default-check",
+            "--output",
+            str(target),
+            "--research-direction",
+            "multi-agent 是否已经从高级 workflow 包装进入可治理的 Agent Team 范式迁移",
+            "--direction-status",
+            "user_provided",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装进入可治理的 Agent Team 范式迁移`" in text
+    assert "- direction_status: `user_provided`" in text
+    assert "- used_default_rules: `false`" in text

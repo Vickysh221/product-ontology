@@ -38,6 +38,8 @@ def build_markdown(args: argparse.Namespace) -> str:
             collaboration_mode,
             focus_priority,
             target_audience,
+            research_direction,
+            direction_status,
             decision_intent,
             evidence_posture,
             special_attention,
