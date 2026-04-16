@@ -296,6 +296,21 @@ def build_research_question(intake_text: str) -> tuple[str, str]:
     return "", direction_status
 
 
+def normalize_review_theme_label(role_text: str) -> str:
+    normalized = role_text.strip()
+    if normalized.startswith("强调"):
+        normalized = normalized[len("强调") :].strip()
+    return normalized.rstrip("。")
+
+
+def build_review_pack_paraphrase(research_direction: str, role_text: str) -> str:
+    theme_label = normalize_review_theme_label(role_text)
+    return (
+        f"这条材料把“{research_direction}”落到{theme_label}这一层，"
+        "说明讨论已经不只是能力展示，而是在进入协作结构、控制机制或组织边界的重构。"
+    )
+
+
 def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[str, str]:
     research_direction, direction_status = build_research_question(intake_text)
     role_map = build_episode_role_map(synthesis_text)
@@ -304,11 +319,7 @@ def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[st
     theme_lines: list[str] = []
     for slug in episode_slugs:
         evidence = collect_evidence_for_episode(slug)
-        quote = ""
-        if evidence["highlights"]:
-            quote = strip_number_prefix(evidence["highlights"][0])
-        elif evidence["summary"]:
-            quote = strip_number_prefix(evidence["summary"][0])
+        quote = select_evidence_anchor(slug, evidence)
         role_text = role_map.get(slug, slug)
         theme_lines.append(
             "\n".join(
@@ -319,7 +330,7 @@ def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[st
                     quote,
                     "",
                     "**Paraphrase**  ",
-                    f"这条材料与研究问题“{research_direction}”相关，因为它在强调 {role_text}。",
+                    build_review_pack_paraphrase(research_direction, role_text),
                     "",
                     "**Evidence**  ",
                     f"- `{slug}`",

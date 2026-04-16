@@ -270,6 +270,14 @@ def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
     assert "Why it matters" in text
     assert "podwise-ai-7758431-2cd3ef48" in text
     assert text.count("### 主题：") >= 2
+    assert "因为它在强调 强调" not in text
+    assert "。。" not in text
+    assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
+    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
+    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
+    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
+    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
 
 
 def test_materialized_review_pack_has_research_sections():
@@ -281,6 +289,14 @@ def test_materialized_review_pack_has_research_sections():
     assert "## Counter-Signals And Tensions" in text
     assert "## Draft Problem Statement" in text
     assert "## Draft Assumptions" in text
+    assert "因为它在强调 强调" not in text
+    assert "。。" not in text
+    assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
+    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
+    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
+    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
+    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
 
 
 def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
