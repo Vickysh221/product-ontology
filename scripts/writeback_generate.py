@@ -133,6 +133,27 @@ def collect_evidence_for_episode(slug: str) -> dict[str, list[str]]:
     }
 
 
+def format_extra_question(question: str) -> str:
+    known_questions = {
+        "multiagent_paradigm_shift": "multi-agent 是否已进入范式迁移期",
+    }
+    return known_questions.get(question, question.replace("_", " "))
+
+
+def collect_theme_terms(stable_themes: list[str]) -> list[str]:
+    terms: list[str] = []
+    for theme in stable_themes:
+        matches = re.findall(r"`([^`]+)`", theme)
+        if matches:
+            for match in matches:
+                if match not in terms:
+                    terms.append(match)
+            continue
+        if theme not in terms:
+            terms.append(theme)
+    return terms
+
+
 def build_longform_outline(intake_text: str, synthesis_text: str) -> dict[str, object]:
     collaboration_mode = read_field(intake_text, "collaboration_mode")
     target_audience = read_field(intake_text, "target_audience")
@@ -157,6 +178,11 @@ def build_longform_sections(
     synthesis_text: str,
 ) -> dict[str, str]:
     outline = build_longform_outline(intake_text, synthesis_text)
+    collaboration_mode = str(outline["collaboration_mode"])
+    target_audience = str(outline["target_audience"])
+    extra_questions = [str(item) for item in outline["extra_questions"]]
+    stable_themes = [str(item) for item in outline["stable_themes"]]
+    preserved_tensions = [str(item) for item in outline["preserved_tensions"]]
     role_map = build_episode_role_map(synthesis_text)
     episode_slugs = collect_episode_slugs(synthesis_text)
     evidence_lines: list[str] = []
@@ -170,32 +196,59 @@ def build_longform_sections(
             anchor = evidence["summary"][0]
         evidence_lines.append(f"- `{slug}`：{role} 证据锚点：{anchor}")
 
+    question_focus = "、".join(format_extra_question(question) for question in extra_questions)
+    theme_terms = collect_theme_terms(stable_themes)
+    theme_focus = "、".join(f"`{term}`" for term in theme_terms[:3])
+    if not theme_focus:
+        theme_focus = "角色边界、权限控制与执行治理"
+
+    audience_focus_map = {
+        "team": "对团队读者来说，重点不是单个 agent 更聪明，而是多人协作时的分工、交接与治理边界是否开始被产品显式承接。",
+        "exec": "对决策者来说，重点是这种结构是否正在从实验性 workflow 变成可投入组织资源的默认能力层。",
+        "self": "对个人使用者来说，重点是这种结构是否真的把复杂任务拆成了可控、可复用、可校验的执行网络。",
+    }
+    audience_focus = audience_focus_map.get(
+        target_audience,
+        "重点是这种结构变化是否已经从局部技巧上升为可复用的产品组织方式。",
+    )
+    collaboration_focus = (
+        "在 integrated 协作模式下，这里把判断、机制和证据收束进同一条叙事主线。"
+        if collaboration_mode == "integrated"
+        else "这里先把判断、机制和证据拆开描述，再回到统一结论。"
+    )
+    subtitle_clause = f"副标题“{subtitle}”对应的判断路径也会被一并展开。" if subtitle else ""
+    question_clause = (
+        f"本次追问聚焦于“{question_focus}”。"
+        if question_focus
+        else "本次追问聚焦于这组材料是否已经支撑结构层判断。"
+    )
     summary = (
-        "这篇报告围绕五条一线播客语料，回答 multi-agent 是否正在从更强的工作流包装，"
-        "走向可治理的 Agent Team 结构。对于团队协作来说，关键变化不只是 agent 数量增加，"
-        "而是 harness engineering、角色边界、权限控制和异步协作被收束进同一条产品主链。"
+        f"这篇报告以“{title}”为主问题，围绕五条一线播客语料，回答 multi-agent 是否正在从更强的工作流包装，"
+        f"走向可治理的 Agent Team 结构。{audience_focus}{subtitle_clause}"
     )
     judgment = str(outline["core_judgment"])
     mechanism = (
         "这组材料共同显示，agent orchestration 的价值并不在于把多个智能体机械排队，"
         "而在于把测试、容器、权限、审核与任务分工嵌入执行机制里。"
         "一旦这些控制层被稳定地纳入系统设计，multi-agent 就不再只是编排技巧，"
-        "而开始接近产品能力边界的重新定义。"
+        f"而开始接近产品能力边界的重新定义。稳定主题里反复出现的 {theme_focus}，"
+        "说明这次变化已经不只是能力数量增加，而是在重写系统如何被约束、协作和验证。"
     )
     workflow = (
-        "对团队而言，这种变化直接影响工作流。系统从单 agent 响应工具，"
+        f"{collaboration_focus}系统从单 agent 响应工具，"
         "变成可以在明确边界下分派、回收、校验和交接工作的执行网络。"
         "这会把原本隐性的协作约束，例如谁负责审批、谁能调用什么资源、"
         "哪些结果需要复核，变成产品结构的一部分。"
     )
     extra = (
-        "就本次追问而言，现有证据已经足以说明这不是简单的 feature 堆叠。"
+        f"就本次追问而言，{question_clause}"
+        "现有证据已经足以说明这不是简单的 feature 堆叠。"
         "五条语料都在重复同一件事：当 agent 需要稳定承担不同角色、"
         "在不同权限层运行，并且接受测试与治理约束时，产品形态就从单体助手转向 Agent Team。"
         "但这条范式迁移是否已经完全稳定，仍取决于这些控制层能否持续成为默认产品结构，"
         "而不是只出现在工程演示或高成熟团队的局部实践中。"
     )
-    tensions = "\n".join(f"- {item}" for item in outline["preserved_tensions"])
+    tensions = "\n".join(f"- {item}" for item in preserved_tensions)
     return {
         "summary": summary,
         "judgment": judgment,
