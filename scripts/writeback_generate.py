@@ -118,9 +118,11 @@ def collect_evidence_for_episode(slug: str) -> list[str]:
     summary_path = base_dir / "summary.md"
     highlights_path = base_dir / "highlights.md"
     if summary_path.exists():
-        summary_lines = [line.strip() for line in read_file(summary_path).splitlines() if line.strip()][:8]
+        summary_content = read_section(read_file(summary_path), "Content")
+        summary_lines = [line.strip() for line in summary_content.splitlines() if line.strip()][:8]
     if highlights_path.exists():
-        highlights_lines = [line.strip() for line in read_file(highlights_path).splitlines() if line.strip()][:8]
+        highlights_content = read_section(read_file(highlights_path), "Content")
+        highlights_lines = [line.strip() for line in highlights_content.splitlines() if line.strip()][:8]
     return summary_lines + highlights_lines
 
 
