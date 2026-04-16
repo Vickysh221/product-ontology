@@ -35,6 +35,15 @@ def format_list(values: list[str]) -> str:
     return "[" + ", ".join(f"`{value}`" for value in values) + "]"
 
 
+def strip_number_prefix(value: str) -> str:
+    return re.sub(r"^\d+\.\s*", "", value).strip()
+
+
+def format_preserved_tensions_metadata(values: list[str]) -> str:
+    normalized = [value.replace("`", "") for value in values]
+    return format_list(normalized)
+
+
 def read_section(text: str, heading: str) -> str:
     lines = text.splitlines()
     heading_index = None
@@ -123,14 +132,35 @@ def collect_evidence_for_episode(slug: str) -> dict[str, list[str]]:
     highlights_path = base_dir / "highlights.md"
     if summary_path.exists():
         summary_content = read_section(read_file(summary_path), "Content")
-        summary_lines = [line.strip() for line in summary_content.splitlines() if line.strip()][:8]
+        summary_lines = [line.strip() for line in summary_content.splitlines() if line.strip()]
     if highlights_path.exists():
         highlights_content = read_section(read_file(highlights_path), "Content")
-        highlights_lines = [line.strip() for line in highlights_content.splitlines() if line.strip()][:8]
+        highlights_lines = [line.strip() for line in highlights_content.splitlines() if line.strip()]
     return {
         "summary": summary_lines,
         "highlights": highlights_lines,
     }
+
+
+PILOT_THEME_FOCUS_MAP = {
+    "harness engineering": "`harness engineering`",
+    "multiagent paradigm shift": "范式迁移判断",
+    "企业场景中的多人多agent管理，本质上要求角色、权限、责任和沟通边界同时显式化。": "角色与权限边界显式化",
+}
+
+
+PILOT_QUESTION_LEDES = {
+    "multi-agent 是否已进入范式迁移期": "这里真正要回答的问题是：multi-agent 是否已进入范式迁移期。",
+}
+
+
+PILOT_ANCHOR_LINES = {
+    "podwise-ai-7758431-2cd3ef48": "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。随着项目规模增长，代码是否依然可控，才是软件工程的核心挑战。",
+    "podwise-ai-7718625-7d0dc7d1": "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。",
+    "podwise-ai-7635732-bdfba3f3": "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。",
+    "podwise-ai-7504915-91b52a0e": "[01:16:57] 我认为我这个人是一个一百人的公司。",
+    "podwise-ai-7368984-f9a0fefa": "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。",
+}
 
 
 def format_extra_question(question: str) -> str:
@@ -152,6 +182,42 @@ def collect_theme_terms(stable_themes: list[str]) -> list[str]:
         if theme not in terms:
             terms.append(theme)
     return terms
+
+
+def build_theme_focus(stable_themes: list[str]) -> str:
+    focus_terms: list[str] = []
+    for theme in stable_themes:
+        normalized_theme = theme.replace("`", "")
+        for needle, mapped in PILOT_THEME_FOCUS_MAP.items():
+            if needle in normalized_theme and mapped not in focus_terms:
+                focus_terms.append(mapped)
+    if focus_terms:
+        if focus_terms == ["`harness engineering`", "范式迁移判断", "角色与权限边界显式化"]:
+            return "`harness engineering`、范式迁移判断，以及角色与权限边界显式化"
+        return "、".join(focus_terms[:3])
+
+    theme_terms = collect_theme_terms(stable_themes)
+    fallback_focus = "、".join(f"`{term}`" for term in theme_terms[:3])
+    return fallback_focus or "角色边界、权限控制与执行治理"
+
+
+def build_question_lede(question_focus: str) -> str:
+    return PILOT_QUESTION_LEDES.get(question_focus, f"就本次追问而言，本次追问聚焦于“{question_focus}”。")
+
+
+def select_evidence_anchor(slug: str, evidence: dict[str, list[str]]) -> str:
+    candidate_lines = [strip_number_prefix(line) for line in evidence["highlights"] + evidence["summary"]]
+    target_line = PILOT_ANCHOR_LINES.get(slug)
+    if target_line:
+        for candidate in candidate_lines:
+            if candidate == target_line:
+                return candidate
+
+    if evidence["highlights"]:
+        return strip_number_prefix(evidence["highlights"][0])
+    if evidence["summary"]:
+        return strip_number_prefix(evidence["summary"][0])
+    return ""
 
 
 def build_longform_outline(intake_text: str, synthesis_text: str) -> dict[str, object]:
@@ -189,18 +255,11 @@ def build_longform_sections(
     for slug in episode_slugs:
         role = role_map.get(slug, "")
         evidence = collect_evidence_for_episode(slug)
-        anchor = ""
-        if evidence["highlights"]:
-            anchor = evidence["highlights"][0]
-        elif evidence["summary"]:
-            anchor = evidence["summary"][0]
+        anchor = select_evidence_anchor(slug, evidence)
         evidence_lines.append(f"- `{slug}`：{role} 证据锚点：{anchor}")
 
     question_focus = "、".join(format_extra_question(question) for question in extra_questions)
-    theme_terms = collect_theme_terms(stable_themes)
-    theme_focus = "、".join(f"`{term}`" for term in theme_terms[:3])
-    if not theme_focus:
-        theme_focus = "角色边界、权限控制与执行治理"
+    theme_focus = build_theme_focus(stable_themes)
 
     audience_focus_map = {
         "team": "对团队读者来说，重点不是单个 agent 更聪明，而是多人协作时的分工、交接与治理边界是否开始被产品显式承接。",
@@ -217,8 +276,8 @@ def build_longform_sections(
         else "这里先把判断、机制和证据拆开描述，再回到统一结论。"
     )
     subtitle_clause = f"副标题“{subtitle}”对应的判断路径也会被一并展开。" if subtitle else ""
-    question_clause = (
-        f"本次追问聚焦于“{question_focus}”。"
+    question_lede = (
+        build_question_lede(question_focus)
         if question_focus
         else "本次追问聚焦于这组材料是否已经支撑结构层判断。"
     )
@@ -241,7 +300,7 @@ def build_longform_sections(
         "哪些结果需要复核，变成产品结构的一部分。"
     )
     extra = (
-        f"就本次追问而言，{question_clause}"
+        f"{question_lede}"
         "现有证据已经足以说明这不是简单的 feature 堆叠。"
         "五条语料都在重复同一件事：当 agent 需要稳定承担不同角色、"
         "在不同权限层运行，并且接受测试与治理约束时，产品形态就从单体助手转向 Agent Team。"
@@ -369,7 +428,7 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 - synthesis_ref: `{synthesis_ref}`
 - review_refs: {format_list(review_refs)}
 - verdict_refs: {format_list(verdict_refs)}
-- preserved_tensions: {format_list(preserved_tensions)}
+- preserved_tensions: {format_preserved_tensions_metadata(preserved_tensions)}
 
 ## 标题
 

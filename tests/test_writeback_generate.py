@@ -214,6 +214,24 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     assert "- `podwise-ai-7635732-bdfba3f3`" in text
     assert "- `podwise-ai-7504915-91b52a0e`" in text
     assert "- `podwise-ai-7368984-f9a0fefa`" in text
+    assert "- preserved_tensions: [`harness engineering 到底是工程方法，还是已经进入产品主能力层。`" in text
+    assert "``harness engineering`" not in text
+    assert "稳定主题里反复出现的 `harness engineering`、范式迁移判断，以及角色与权限边界显式化" in text
+    assert "这里真正要回答的问题是：multi-agent 是否已进入范式迁移期。" in text
+    assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
+    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
+    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
+    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
+    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
+
+
+def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
+    result, target = run_render_longform(tmp_path)
+    assert result.returncode == 0, result.stderr
+    generated = target.read_text()
+    committed = Path("library/writebacks/podcasts/matrix/integrated-team-paradigm.md").read_text()
+    assert generated == committed
 
 
 def test_materialized_integrated_team_paradigm_is_longform():
