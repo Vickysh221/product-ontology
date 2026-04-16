@@ -119,3 +119,22 @@ def test_library_matrix_has_12_intakes_and_12_writebacks():
     assert "- synthesis_ref:" in sample_writeback
     assert "- target_audience:" in sample_writeback
     assert "## 副标题" in sample_writeback
+
+
+def test_matrix_outputs_do_not_collapse_to_identical_headers():
+    writeback_dir = Path("library/writebacks/podcasts/matrix")
+    headers = []
+    for path in sorted(writeback_dir.glob("*.md")):
+        text = path.read_text()
+        headers.append((path.name, "## 副标题" in text, "- target_audience:" in text, "- synthesis_ref:" in text))
+    assert len({item[0] for item in headers}) == 12
+    assert all(item[1] and item[2] and item[3] for item in headers)
+
+
+def test_matrix_outputs_cover_all_audiences_and_modes():
+    writeback_dir = Path("library/writebacks/podcasts/matrix")
+    text = "\n".join(path.read_text() for path in writeback_dir.glob("*.md"))
+    for token in ["`self`", "`team`", "`exec`", "`research_archive`"]:
+        assert token in text
+    for token in ["`integrated`", "`sectioned`", "`appendix`"]:
+        assert token in text
