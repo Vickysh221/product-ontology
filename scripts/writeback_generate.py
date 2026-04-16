@@ -5,6 +5,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+import os
 
 
 def read_file(path: str | Path) -> str:
@@ -163,11 +164,11 @@ PILOT_ANCHOR_LINES = {
 }
 
 
-UX_LENS_REFS = [
-    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/UX for human、UX of agent、以及 UX of collaboration.md"),
-    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/UX_PRINCIPLES_ATTENTION_ARBITRATION.md"),
-    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/一个合格的 AI native agentic UX designer 要具备的核心能力.md"),
-    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/当今 agent 在人机交互中的主要探索.md"),
+UX_LENS_REF_NAMES = [
+    "UX for human、UX of agent、以及 UX of collaboration.md",
+    "UX_PRINCIPLES_ATTENTION_ARBITRATION.md",
+    "一个合格的 AI native agentic UX designer 要具备的核心能力.md",
+    "当今 agent 在人机交互中的主要探索.md",
 ]
 
 
@@ -250,9 +251,19 @@ def build_longform_outline(intake_text: str, synthesis_text: str) -> dict[str, o
     }
 
 
+def resolve_ux_lens_refs() -> list[Path]:
+    principles_dir = Path(
+        os.environ.get(
+            "OPENCLAW_SHARED_PRINCIPLES_DIR",
+            Path.home() / ".openclaw/workspace/shared/Principles",
+        )
+    )
+    return [principles_dir / filename for filename in UX_LENS_REF_NAMES]
+
+
 def build_ai_native_ux_lens_pack() -> list[str]:
     lens_points: list[str] = []
-    for path in UX_LENS_REFS:
+    for path in resolve_ux_lens_refs():
         if not path.exists():
             continue
         text = read_file(path)
@@ -290,7 +301,11 @@ def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[st
     theme_lines: list[str] = []
     for slug in episode_slugs:
         evidence = collect_evidence_for_episode(slug)
-        quote = strip_number_prefix(evidence["highlights"][0]) if evidence["highlights"] else ""
+        quote = ""
+        if evidence["highlights"]:
+            quote = strip_number_prefix(evidence["highlights"][0])
+        elif evidence["summary"]:
+            quote = strip_number_prefix(evidence["summary"][0])
         role_text = role_map.get(slug, slug)
         theme_lines.append(
             "\n".join(
