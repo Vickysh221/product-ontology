@@ -27,6 +27,8 @@ def test_writeback_generate_requires_intake(tmp_path):
             "render",
             "--writeback-id",
             "writeback-demo",
+            "--intake-file",
+            str(tmp_path / "missing-intake.md"),
             "--output",
             str(target),
             "--title",
