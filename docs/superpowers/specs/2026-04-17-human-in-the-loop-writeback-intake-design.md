@@ -69,11 +69,27 @@ It captures:
 - what extra questions the report must answer
 - what tensions or doubts should remain visible
 
-## Required Intake Fields
+## Intake Fields
 
-These are the minimum fields required for every writeback intake.
+`Writeback Intake` should support both:
+- explicit user-provided guidance
+- empty or minimal user input
+
+The system must allow the user to provide nothing beyond a confirmation to proceed.
+In that case, report generation should fall back to the default writeback rules already defined by the product.
+
+This means:
+- intake is still a required step in the workflow
+- full field population is not required
+- only `intake_id` must always exist as a record key
+- all other fields may be user-specified, defaulted, or left empty
+
+### Always-Present Field
 
 - `intake_id`
+
+### Optional Structured Fields
+
 - `collaboration_mode`
 - `focus_priority`
 - `target_audience`
@@ -155,14 +171,19 @@ These fields allow the user to steer the report beyond the standard frame.
 
 ## Minimum Agent Question Set
 
-Before generating a writeback, the agent must ask at least these four questions.
+Before generating a writeback, the agent should offer a short intake prompt that gives the user a chance to steer the report.
 
-1. What collaboration mode should this report use?
-2. What should this report prioritize?
-3. Are there any extra themes or questions this report must address?
-4. Are there any doubts, tensions, or boundaries that should remain visible?
+The intake prompt should cover these areas:
+
+1. collaboration mode
+2. focus priority
+3. extra themes or required questions
+4. doubts, tensions, or boundaries to preserve
 
 These questions should be short and operational. They are not meant to trigger a long conversation.
+
+The user may also decline to specify any of them.
+If the user does not provide guidance, the system should proceed with default writeback behavior.
 
 ## Relationship To Review Layer
 
@@ -214,6 +235,11 @@ Every future writeback should record:
 
 The body of the writeback should visibly reflect intake choices.
 
+If the user provides no intake guidance, the writeback should still record:
+- the `intake_id`
+- that default report rules were used
+- any structured fields that remained unset
+
 Examples:
 - if `focus_priority` starts with `user_trust`, trust should move earlier in the report
 - if `evidence_posture` is `strict`, speculative implications should be clearly limited
@@ -262,9 +288,10 @@ Do not implement yet:
 ## Error Handling And Edge Cases
 
 If the user gives no extra guidance:
-- the system should still require intake
-- defaults may be used for optional fields
-- required fields must still be explicit
+- the system should still pass through intake
+- the agent should allow an empty response
+- default writeback rules should be used
+- the writeback should record that defaults were applied
 
 If the user gives instructions outside the ontology frame:
 - they should be recorded in open fields
@@ -276,8 +303,8 @@ If the user asks for a mode that conflicts with evidence posture:
 ## Testing Expectations
 
 Verification for the first implementation should check:
-- a writeback cannot be generated without intake metadata
-- all required intake fields are present
+- a writeback cannot be generated without an intake record
+- default-mode writebacks can be generated with no user-specified structured fields
 - open-ended user instructions are preserved in the writeback record
 - the same evidence can produce different writeback shapes under different collaboration modes
 - preserved tensions remain visible in the final output
