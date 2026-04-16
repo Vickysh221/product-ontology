@@ -111,3 +111,11 @@ def test_library_matrix_has_12_intakes_and_12_writebacks():
     writeback_dir = Path("library/writebacks/podcasts/matrix")
     assert len(list(intake_dir.glob("*.md"))) == 12
     assert len(list(writeback_dir.glob("*.md"))) == 12
+    sample_intake = sorted(intake_dir.glob("*.md"))[0].read_text()
+    sample_writeback = sorted(writeback_dir.glob("*.md"))[0].read_text()
+    assert "- collaboration_mode:" in sample_intake
+    assert "- target_audience:" in sample_intake
+    assert "- extra_questions:" in sample_intake
+    assert "- synthesis_ref:" in sample_writeback
+    assert "- target_audience:" in sample_writeback
+    assert "## 副标题" in sample_writeback
