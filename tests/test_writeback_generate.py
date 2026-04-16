@@ -91,7 +91,12 @@ def test_writeback_generate_with_default_intake(tmp_path):
 
 def test_sample_writeback_records_intake_and_reviews():
     text = Path("library/writebacks/2026-04-16-xiaopeng-v2a-explainability-writeback.md").read_text()
+    intake = Path("library/writeback-intakes/podcasts/intake-podwise-ai-7650271-dfb97270-default.md").read_text()
     assert "- intake_id:" in text
+    assert "- focus_priority:" in text
+    assert "- special_attention:" in text
     assert "- review_refs:" in text
     assert "- verdict_refs:" in text
     assert "## 评审视角" in text
+    assert "- preserve_tensions: [`真实用户是否看见并理解了解释能力`]" in intake
+    assert "- used_default_rules: `false`" in intake

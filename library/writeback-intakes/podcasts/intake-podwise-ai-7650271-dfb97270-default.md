@@ -10,4 +10,4 @@
 - extra_questions: []
 - avoidances: []
 - preserve_tensions: [`真实用户是否看见并理解了解释能力`]
-- used_default_rules: `true`
+- used_default_rules: `false`

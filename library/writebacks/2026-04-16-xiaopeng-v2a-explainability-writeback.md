@@ -3,7 +3,9 @@
 - writeback_id: `writeback-2026-04-16-xiaopeng-v2a-explainability`
 - intake_id: `intake-podwise-ai-7650271-dfb97270-default`
 - collaboration_mode: ``
-- used_default_rules: `true`
+- used_default_rules: `false`
+- focus_priority: []
+- special_attention: []
 - review_refs: [`review-product-podwise-ai-7650271-dfb97270-16`, `review-ux-podwise-ai-7650271-dfb97270-16`, `review-contrarian-podwise-ai-7650271-dfb97270-16`]
 - verdict_refs: [`verdict-podwise-ai-7650271-dfb97270-16`]
 - preserved_tensions: [`真实用户是否看见并理解了解释能力`]

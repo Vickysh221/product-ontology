@@ -103,6 +103,9 @@ python3 scripts/writeback_intake.py create --intake-id <intake-id> --output <pat
 python3 scripts/writeback_generate.py render --writeback-id <writeback-id> --intake-file <path> --output <path> --title <title> --summary <summary>
 ```
 
+Canonical sample:
+- `library/writebacks/2026-04-16-xiaopeng-v2a-explainability-writeback.md`
+
 ## Podcast Ingestion
 
 This repository includes a phase-1 Podwise ingestion flow for podcast and video episode materials.
