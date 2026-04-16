@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WritebackIntakeRecord",
+  "type": "object",
+  "required": ["intake_id"],
+  "properties": {
+    "intake_id": { "type": "string" },
+    "collaboration_mode": {
+      "type": ["string", "null"],
+      "enum": ["integrated", "sectioned", "appendix", null]
+    },
+    "focus_priority": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "target_audience": { "type": ["string", "null"] },
+    "decision_intent": { "type": ["string", "null"] },
+    "evidence_posture": { "type": ["string", "null"] },
+    "special_attention": { "type": "array", "items": { "type": "string" } },
+    "extra_questions": { "type": "array", "items": { "type": "string" } },
+    "avoidances": { "type": "array", "items": { "type": "string" } },
+    "preserve_tensions": { "type": "array", "items": { "type": "string" } },
+    "used_default_rules": { "type": "boolean", "default": false }
+  }
+}

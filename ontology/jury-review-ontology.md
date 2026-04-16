@@ -26,6 +26,8 @@ The Judge is the only role allowed to promote `Claim -> Pattern` or downgrade `C
    The Judge reconciles support, weakness, refutation, and evidence gaps into a single verdict.
 4. Preserved disagreements.
    Any unresolved conflict stays on record instead of being forced into premature agreement.
+5. Writeback intake and rendering.
+   Review traces may only influence a final writeback after the user passes through intake. Writeback rendering must preserve disagreements rather than flatten them.
 
 ## Seat Model
 
