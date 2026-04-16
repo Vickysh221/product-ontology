@@ -8,6 +8,12 @@ def parse_csv(value: str | None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def normalize_text(value: str | None) -> str:
+    if value is None:
+        return ""
+    return value.strip()
+
+
 def format_list(values: list[str]) -> str:
     if not values:
         return "[]"
@@ -15,32 +21,36 @@ def format_list(values: list[str]) -> str:
 
 
 def build_markdown(args: argparse.Namespace) -> str:
-    used_default_rules = args.use_defaults or not any(
-        [
-            args.collaboration_mode,
-            args.focus_priority,
-            args.target_audience,
-            args.decision_intent,
-            args.evidence_posture,
-            args.special_attention,
-            args.extra_questions,
-            args.avoidances,
-            args.preserve_tensions,
-        ]
-    )
+    collaboration_mode = normalize_text(args.collaboration_mode)
+    target_audience = normalize_text(args.target_audience)
+    decision_intent = normalize_text(args.decision_intent)
+    evidence_posture = normalize_text(args.evidence_posture)
     focus_priority = parse_csv(args.focus_priority)
     special_attention = parse_csv(args.special_attention)
     extra_questions = parse_csv(args.extra_questions)
     avoidances = parse_csv(args.avoidances)
     preserve_tensions = parse_csv(args.preserve_tensions)
+    used_default_rules = args.use_defaults or not any(
+        [
+            collaboration_mode,
+            focus_priority,
+            target_audience,
+            decision_intent,
+            evidence_posture,
+            special_attention,
+            extra_questions,
+            avoidances,
+            preserve_tensions,
+        ]
+    )
     return f"""# Writeback Intake Record
 
 - intake_id: `{args.intake_id}`
-- collaboration_mode: `{args.collaboration_mode or ''}`
+- collaboration_mode: `{collaboration_mode}`
 - focus_priority: {format_list(focus_priority)}
-- target_audience: `{args.target_audience or ''}`
-- decision_intent: `{args.decision_intent or ''}`
-- evidence_posture: `{args.evidence_posture or ''}`
+- target_audience: `{target_audience}`
+- decision_intent: `{decision_intent}`
+- evidence_posture: `{evidence_posture}`
 - special_attention: {format_list(special_attention)}
 - extra_questions: {format_list(extra_questions)}
 - avoidances: {format_list(avoidances)}
@@ -57,7 +67,7 @@ def main() -> int:
     create.add_argument("--intake-id", required=True)
     create.add_argument("--output", required=True)
     create.add_argument("--use-defaults", action="store_true")
-    create.add_argument("--collaboration-mode")
+    create.add_argument("--collaboration-mode", choices=["integrated", "sectioned", "appendix"])
     create.add_argument("--focus-priority")
     create.add_argument("--target-audience")
     create.add_argument("--decision-intent")

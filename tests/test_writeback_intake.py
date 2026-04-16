@@ -78,3 +78,48 @@ def test_writeback_intake_cli_preserves_user_fields(tmp_path):
     assert "- collaboration_mode: `sectioned`" in text
     assert "- used_default_rules: `false`" in text
     assert "`mechanism`" in text and "`user_trust`" in text
+
+
+def test_writeback_intake_cli_treats_empty_parsed_lists_as_default(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-demo",
+            "--output",
+            str(target),
+            "--focus-priority",
+            ",",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "- used_default_rules: `true`" in text
+
+
+def test_writeback_intake_cli_rejects_invalid_collaboration_mode(tmp_path):
+    target = tmp_path / "intake.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_intake.py",
+            "create",
+            "--intake-id",
+            "intake-demo",
+            "--output",
+            str(target),
+            "--collaboration-mode",
+            "narrative",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr
