@@ -226,6 +226,49 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
 
 
+def run_render_review_pack(tmp_path):
+    target = tmp_path / "writeback-review-pack.md"
+    result = subprocess.run(
+        [
+            "python3",
+            "scripts/writeback_generate.py",
+            "render-review-pack",
+            "--intake-file",
+            "library/writeback-intakes/podcasts/matrix/integrated-team-paradigm.md",
+            "--synthesis-file",
+            "library/syntheses/podcasts/agent-team-governability-2026-04.md",
+            "--output",
+            str(target),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result, target
+
+
+def test_writeback_generate_render_review_pack_creates_research_sections(tmp_path):
+    result, target = run_render_review_pack(tmp_path)
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "## Research Question" in text
+    assert "## Review Introduction" in text
+    assert "## Thematic Literature Review" in text
+    assert "## Counter-Signals And Tensions" in text
+    assert "## Draft Problem Statement" in text
+    assert "## Draft Assumptions" in text
+
+
+def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
+    result, target = run_render_review_pack(tmp_path)
+    assert result.returncode == 0, result.stderr
+    text = target.read_text()
+    assert "Direct quote" in text
+    assert "Paraphrase" in text
+    assert "Evidence" in text
+    assert "Why it matters" in text
+
+
 def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
     result, target = run_render_longform(tmp_path)
     assert result.returncode == 0, result.stderr
