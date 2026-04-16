@@ -588,6 +588,45 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 """
 
 
+def render_review_pack(args: argparse.Namespace) -> str:
+    try:
+        intake_text = read_file(args.intake_file)
+    except OSError:
+        raise SystemExit("missing or unreadable intake file")
+    try:
+        synthesis_text = read_file(args.synthesis_file)
+    except OSError:
+        raise SystemExit("missing or unreadable synthesis file")
+
+    sections = build_review_pack_sections(intake_text, synthesis_text)
+    return f"""# Research Review Pack
+
+## Research Question
+
+{sections["question"]}
+
+## Review Introduction
+
+{sections["intro"]}
+
+## Thematic Literature Review
+
+{sections["review"]}
+
+## Counter-Signals And Tensions
+
+{sections["tensions"]}
+
+## Draft Problem Statement
+
+{sections["problem"]}
+
+## Draft Assumptions
+
+{sections["assumptions"]}
+"""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -611,6 +650,10 @@ def main() -> int:
     render_longform.add_argument("--subtitle", default="")
     render_longform.add_argument("--review-refs", default="")
     render_longform.add_argument("--verdict-refs", default="")
+    render_review_pack_cmd = subparsers.add_parser("render-review-pack")
+    render_review_pack_cmd.add_argument("--intake-file", required=True)
+    render_review_pack_cmd.add_argument("--synthesis-file", required=True)
+    render_review_pack_cmd.add_argument("--output", required=True)
     args = parser.parse_args()
 
     output = Path(args.output)
@@ -620,6 +663,9 @@ def main() -> int:
         return 0
     if args.command == "render-longform":
         output.write_text(render_longform_writeback(args))
+        return 0
+    if args.command == "render-review-pack":
+        output.write_text(render_review_pack(args))
         return 0
     return 0
 

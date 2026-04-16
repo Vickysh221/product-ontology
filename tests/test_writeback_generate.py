@@ -272,6 +272,17 @@ def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
     assert text.count("### 主题：") >= 2
 
 
+def test_materialized_review_pack_has_research_sections():
+    text = Path("library/review-packs/podcasts/review-pack-agent-team-paradigm.md").read_text()
+    assert "# Research Review Pack" in text
+    assert "## Research Question" in text
+    assert "## Review Introduction" in text
+    assert "## Thematic Literature Review" in text
+    assert "## Counter-Signals And Tensions" in text
+    assert "## Draft Problem Statement" in text
+    assert "## Draft Assumptions" in text
+
+
 def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
     result, target = run_render_longform(tmp_path)
     assert result.returncode == 0, result.stderr
