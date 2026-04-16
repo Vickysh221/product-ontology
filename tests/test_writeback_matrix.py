@@ -98,4 +98,9 @@ def test_writeback_matrix_cli_generates_writebacks(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    assert len(list(intake_dir.glob("*.md"))) == 12
     assert len(list(writeback_dir.glob("*.md"))) == 12
+    sample_writeback = sorted(writeback_dir.glob("*.md"))[0].read_text()
+    assert "- synthesis_ref:" in sample_writeback
+    assert "- target_audience:" in sample_writeback
+    assert "## 副标题" in sample_writeback

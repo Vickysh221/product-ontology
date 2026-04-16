@@ -12,9 +12,16 @@ def load_config(path: str) -> dict:
     return yaml.safe_load(Path(path).read_text())
 
 
+def run_checked(command: list[str]) -> None:
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"matrix command failed: {exc.cmd}") from exc
+
+
 def make_intake(output_dir: Path, row: dict) -> None:
     output = output_dir / f"{row['output_slug']}.md"
-    subprocess.run(
+    run_checked(
         [
             "python3",
             "scripts/writeback_intake.py",
@@ -29,15 +36,14 @@ def make_intake(output_dir: Path, row: dict) -> None:
             row["target_audience"],
             "--extra-questions",
             row["extra_question_theme"],
-        ],
-        check=True,
+        ]
     )
 
 
 def make_writeback(writeback_dir: Path, intake_dir: Path, config: dict, row: dict) -> None:
     intake = intake_dir / f"{row['output_slug']}.md"
     output = writeback_dir / f"{row['output_slug']}.md"
-    subprocess.run(
+    run_checked(
         [
             "python3",
             "scripts/writeback_generate.py",
@@ -56,8 +62,7 @@ def make_writeback(writeback_dir: Path, intake_dir: Path, config: dict, row: dic
             "基于共享综合判断底座生成的矩阵测试写作版本。",
             "--synthesis-ref",
             config["synthesis_id"],
-        ],
-        check=True,
+        ]
     )
 
 
