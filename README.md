@@ -106,6 +106,15 @@ python3 scripts/writeback_generate.py render --writeback-id <writeback-id> --int
 Canonical sample:
 - `library/writebacks/2026-04-16-xiaopeng-v2a-explainability-writeback.md`
 
+## Writeback Matrix Test
+
+```bash
+python3 scripts/writeback_matrix.py generate-all \
+  --config seed/writeback-matrix-test.yaml \
+  --intake-dir library/writeback-intakes/podcasts/matrix \
+  --writeback-dir library/writebacks/podcasts/matrix
+```
+
 ## Podcast Ingestion
 
 This repository includes a phase-1 Podwise ingestion flow for podcast and video episode materials.
