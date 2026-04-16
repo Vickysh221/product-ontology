@@ -1,0 +1,69 @@
+title: 从单 Agent 工具到可治理的 Agent Team：五条一线语料中的编排、协作与企业化信号
+synthesis_id: synthesis-podcasts-agent-team-governability-2026-04
+source_episode_slugs:
+  - podwise-ai-7758431-2cd3ef48
+  - podwise-ai-7718625-7d0dc7d1
+  - podwise-ai-7635732-bdfba3f3
+  - podwise-ai-7504915-91b52a0e
+  - podwise-ai-7368984-f9a0fefa
+matrix:
+  - output_slug: integrated-self-harness
+    collaboration_mode: integrated
+    target_audience: self
+    extra_question_theme: harness_engineering
+    subtitle: 给自己看的 integrated 版：Harness Engineering 是工程手段还是产品主能力
+  - output_slug: integrated-team-paradigm
+    collaboration_mode: integrated
+    target_audience: team
+    extra_question_theme: multiagent_paradigm_shift
+    subtitle: 给团队看的 integrated 版：Multi-Agent 是否已进入范式迁移期
+  - output_slug: integrated-exec-enterprise
+    collaboration_mode: integrated
+    target_audience: exec
+    extra_question_theme: multi_human_multiagent_enterprise_management
+    subtitle: 给高层看的 integrated 版：多人多agent管理如何改变企业控制边界
+  - output_slug: integrated-archive-harness
+    collaboration_mode: integrated
+    target_audience: research_archive
+    extra_question_theme: harness_engineering
+    subtitle: 给研究归档的 integrated 版：Harness Engineering 的产品化边界
+  - output_slug: sectioned-self-paradigm
+    collaboration_mode: sectioned
+    target_audience: self
+    extra_question_theme: multiagent_paradigm_shift
+    subtitle: 给自己看的 sectioned 版：从单 Agent 到 Agent Team 的结构迁移
+  - output_slug: sectioned-team-enterprise
+    collaboration_mode: sectioned
+    target_audience: team
+    extra_question_theme: multi_human_multiagent_enterprise_management
+    subtitle: 给团队看的 sectioned 版：多人多agent协作如何被管理
+  - output_slug: sectioned-exec-harness
+    collaboration_mode: sectioned
+    target_audience: exec
+    extra_question_theme: harness_engineering
+    subtitle: 给高层看的 sectioned 版：Harness Engineering 是否构成产品竞争力
+  - output_slug: sectioned-archive-paradigm
+    collaboration_mode: sectioned
+    target_audience: research_archive
+    extra_question_theme: multiagent_paradigm_shift
+    subtitle: 给研究归档的 sectioned 版：Agent Team 范式迁移的证据结构
+  - output_slug: appendix-self-enterprise
+    collaboration_mode: appendix
+    target_audience: self
+    extra_question_theme: multi_human_multiagent_enterprise_management
+    subtitle: 给自己看的 appendix 版：企业里的人与 Agent 如何共治
+  - output_slug: appendix-team-harness
+    collaboration_mode: appendix
+    target_audience: team
+    extra_question_theme: harness_engineering
+    subtitle: 给团队看的 appendix 版：Harness Engineering 如何进入工作流主链
+  - output_slug: appendix-exec-paradigm
+    collaboration_mode: appendix
+    target_audience: exec
+    extra_question_theme: multiagent_paradigm_shift
+    subtitle: 给高层看的 appendix 版：Multi-Agent 是不是新的产品范式
+  - output_slug: appendix-archive-enterprise
+    collaboration_mode: appendix
+    target_audience: research_archive
+    extra_question_theme: multi_human_multiagent_enterprise_management
+    subtitle: 给研究归档的 appendix 版：企业级多人多agent管理的治理信号
