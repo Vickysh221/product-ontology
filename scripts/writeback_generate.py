@@ -163,6 +163,19 @@ PILOT_ANCHOR_LINES = {
 }
 
 
+UX_LENS_REFS = [
+    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/UX for human、UX of agent、以及 UX of collaboration.md"),
+    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/UX_PRINCIPLES_ATTENTION_ARBITRATION.md"),
+    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/一个合格的 AI native agentic UX designer 要具备的核心能力.md"),
+    Path("/Users/vickyshou/.openclaw/workspace/shared/Principles/当今 agent 在人机交互中的主要探索.md"),
+]
+
+
+RESEARCH_QUESTION_FALLBACKS = {
+    "multiagent_paradigm_shift": "multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移",
+}
+
+
 def format_extra_question(question: str) -> str:
     known_questions = {
         "multiagent_paradigm_shift": "multi-agent 是否已进入范式迁移期",
@@ -234,6 +247,95 @@ def build_longform_outline(intake_text: str, synthesis_text: str) -> dict[str, o
         "core_judgment": core_judgment,
         "stable_themes": stable_themes,
         "preserved_tensions": preserved_tensions,
+    }
+
+
+def build_ai_native_ux_lens_pack() -> list[str]:
+    lens_points: list[str] = []
+    for path in UX_LENS_REFS:
+        if not path.exists():
+            continue
+        text = read_file(path)
+        for needle in [
+            "user goal loop",
+            "agent behavior contract",
+            "注意力仲裁",
+            "handoff",
+            "rollback",
+            "责任",
+        ]:
+            if needle in text and needle not in lens_points:
+                lens_points.append(needle)
+    return lens_points
+
+
+def build_research_question(intake_text: str) -> tuple[str, str]:
+    research_direction = read_field(intake_text, "research_direction")
+    direction_status = read_field(intake_text, "direction_status")
+    if research_direction:
+        return research_direction, direction_status
+
+    for question in read_list_field(intake_text, "extra_questions"):
+        fallback = RESEARCH_QUESTION_FALLBACKS.get(question)
+        if fallback:
+            return fallback, "user_provided"
+    return "", direction_status
+
+
+def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[str, str]:
+    research_direction, direction_status = build_research_question(intake_text)
+    role_map = build_episode_role_map(synthesis_text)
+    episode_slugs = collect_episode_slugs(synthesis_text)
+    lens_pack = build_ai_native_ux_lens_pack()
+    theme_lines: list[str] = []
+    for slug in episode_slugs:
+        evidence = collect_evidence_for_episode(slug)
+        quote = strip_number_prefix(evidence["highlights"][0]) if evidence["highlights"] else ""
+        role_text = role_map.get(slug, slug)
+        theme_lines.append(
+            "\n".join(
+                [
+                    f"### 主题：{role_text}",
+                    "",
+                    "**Direct quote**  ",
+                    quote,
+                    "",
+                    "**Paraphrase**  ",
+                    f"这条材料与研究问题“{research_direction}”相关，因为它在强调 {role_text}。",
+                    "",
+                    "**Evidence**  ",
+                    f"- `{slug}`",
+                    "",
+                    "**Why it matters**  ",
+                    "这条证据值得进入综合判断，因为它直接触及产品结构、协作边界或治理机制。",
+                ]
+            )
+        )
+    intro = "本轮先按主题聚类做综述，不按播客顺序复述，也不先给最终判断。"
+    if lens_pack:
+        intro += f" 当前可补充的 AI-native UX 观察维度包括：{', '.join(lens_pack)}。"
+    tensions = "\n".join(f"- {item}" for item in parse_bullets(read_section(synthesis_text, "保留张力")))
+    assumptions = "\n".join(
+        [
+            "### 被材料支持的 assumptions",
+            "1. 自主执行能力的上限取决于 harness，而不只是模型本身。",
+            "",
+            "### 仍需验证的 assumptions",
+            "1. 这些控制层是否会成为默认产品结构，而不只是高成熟团队的最佳实践。",
+        ]
+    )
+    question_source_map = {
+        "user_provided": "用户给定",
+        "system_suggested_pending": "系统建议，待用户批准",
+        "system_suggested_approved": "系统建议，已批准",
+    }
+    return {
+        "question": f"{research_direction}\n\n问题来源：{question_source_map.get(direction_status, direction_status)}",
+        "intro": intro,
+        "review": "\n\n".join(theme_lines),
+        "tensions": tensions,
+        "problem": "这里先提出一个 draft problem statement：如何把 agent 从偶发可用工具，变成可长期协作、可分工、可升级人工、可追责的执行网络？",
+        "assumptions": assumptions,
     }
 
 
