@@ -368,6 +368,165 @@ def build_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[st
     }
 
 
+PILOT_REVIEW_PACK_THEME_CLUSTERS = [
+    {
+        "title": "执行控制层",
+        "summary": "这一组材料先把控制层讲清楚：代码审核、自动化测试和权限边界不是附属工具，而是 agent 能否稳定执行的前提。",
+        "quotes": [
+            "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。随着项目规模增长，代码是否依然可控，才是软件工程的核心挑战。",
+            "[11:28] - 徐文浩: 自动化的测试，第二个，你所有的提交都会触发 AI 给你做代码审核，",
+        ],
+        "evidence": [
+            "podwise-ai-7758431-2cd3ef48",
+            "podwise-ai-7368984-f9a0fefa",
+        ],
+        "paraphrase": "执行控制层的关键不是让 agent 更快做事，而是先把每一步动作都放进可测试、可审核、可回退的执行框架里。",
+        "why": "这说明 multi-agent 的关键约束不是模型本身，而是 harness、测试和审核是否已经变成默认产品能力。",
+    },
+    {
+        "title": "协作与角色层",
+        "summary": "这一组材料讨论的是人和 agent 如何分工：谁来提问、谁来调度、谁来承担协作中的角色边界。",
+        "quotes": [
+            "[11:38] - 李可佳: 是不是我反而成为了未来人机协作最大的一个瓶颈。",
+            "[18:56] - 覃睿: 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。",
+        ],
+        "evidence": [
+            "podwise-ai-7718625-7d0dc7d1",
+            "podwise-ai-7635732-bdfba3f3",
+        ],
+        "paraphrase": "协作与角色层讲的是：一旦任务被交给 agent，人就不再只是使用者，而会变成提示、约束、审核和分工的一部分。",
+        "why": "这条线索把“更聪明的工具”推进成“可协作的团队结构”，也解释了为什么角色定义会先于功能堆叠变成核心问题。",
+    },
+    {
+        "title": "治理与前台 UX 外显层",
+        "summary": "这一组材料把治理从后台规则推到前台体验：工作环境、权限和组织方式开始被显式地描述出来。",
+        "quotes": [
+            "[01:16:57] - 任鑫: 我认为我这个人是一个一百人的公司。",
+            "[01:04:46] - 徐文浩: 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。",
+        ],
+        "evidence": [
+            "podwise-ai-7504915-91b52a0e",
+            "podwise-ai-7368984-f9a0fefa",
+        ],
+        "paraphrase": "治理与前台 UX 外显层的重点，是把权限、环境和组织结构做成用户可感知的产品体验，而不是只放在后台约束里。",
+        "why": "当治理被前台化，用户看到的就不只是一个会做事的 agent，而是一个可以被组织、被约束、也能被持续协作的工作环境。",
+    },
+]
+
+
+FINAL_WRITEBACK_UX_OBJECTS = [
+    {
+        "name": "责任状态卡",
+        "description": "把当前任务的责任人、待确认项、已接手项和可升级边界放在同一张卡里，避免团队只看到一个会动的 agent，看不到谁对结果负责。",
+    },
+    {
+        "name": "分级决策卡",
+        "description": "把哪些决策可自动通过、哪些需要人确认、哪些必须升级到团队负责人做成分级入口，让决策路径在前台显式可见。",
+    },
+    {
+        "name": "异步沟通面板",
+        "description": "把提醒、评论、追问、回执和跨时区跟进集中在一个异步沟通面板里，减少把协作重新拉回同步会议的冲动。",
+    },
+    {
+        "name": "审计与证据抽屉",
+        "description": "把操作日志、引用证据、回退点和历史决策收进抽屉式证据面板，保证用户随时能回看为什么系统这样做。",
+    },
+]
+
+
+def build_pilot_review_pack_cluster(cluster: dict[str, object]) -> str:
+    quote_blocks = []
+    for quote in cluster["quotes"]:
+        quote_blocks.append("\n".join(["**Direct quote**  ", str(quote)]))
+    return "\n".join(
+        [
+            f"### 主题：{cluster['title']}",
+            "",
+            str(cluster["summary"]),
+            "",
+            "\n\n".join(quote_blocks),
+            "",
+            "**Paraphrase**  ",
+            str(cluster["paraphrase"]),
+            "",
+            "**Evidence**  ",
+            "\n".join(f"- `{slug}`" for slug in cluster["evidence"]),
+            "",
+            "**Why it matters**  ",
+            str(cluster["why"]),
+        ]
+    )
+
+
+def build_pilot_review_pack_sections(intake_text: str, synthesis_text: str) -> dict[str, str]:
+    sections = build_review_pack_sections(intake_text, synthesis_text)
+    sections["review"] = "\n\n".join(
+        build_pilot_review_pack_cluster(cluster) for cluster in PILOT_REVIEW_PACK_THEME_CLUSTERS
+    )
+    return sections
+
+
+def normalize_longform_quote(quote: str) -> str:
+    return re.sub(r"^(\[[^\]]+\])\s*-\s*[^:：]+[:：]\s*", r"\1 ", quote).strip()
+
+
+def build_final_longform_review_section(review_text: str) -> str:
+    sections: list[str] = []
+    for index, block in enumerate(parse_review_theme_blocks(review_text), start=1):
+        quote_1 = normalize_longform_quote(block["quotes"][0]) if block["quotes"] else ""
+        quote_2 = normalize_longform_quote(block["quotes"][1]) if len(block["quotes"]) > 1 else ""
+        sections.append(
+            "\n".join(
+                [
+                    f"### 主题 {index}：{block['title']}",
+                    "",
+                    f"代表引文 1：{quote_1}",
+                    "",
+                    f"代表引文 2：{quote_2}",
+                    "",
+                    f"观察：{block['paraphrase']}",
+                    "",
+                    "证据来源：",
+                    block["evidence"],
+                    "",
+                    f"为什么重要：{block['why']}",
+                ]
+            )
+        )
+    return "\n\n".join(sections)
+
+
+def build_final_problem_statement() -> str:
+    return (
+        "问题已经不再是再增加多少个 agent，而是如何把执行控制、角色分工、治理记录和前台操作收束成一套"
+        "默认可用的团队工作台。"
+    )
+
+
+def build_final_assumptions() -> str:
+    return "\n".join(
+        [
+            "当前工作假设",
+            "- harness、权限和审核层不是附加治理，而是默认执行面的前置条件。",
+            "- 角色边界与责任状态如果不能在 UI 上可见，团队协作就会退化为黑箱自动化。",
+            "- 治理对象如果不能被用户操作和追踪，就不能算真正进入产品能力层。",
+            "",
+            "仍待验证",
+            "- 这些控制层是否会成为默认产品结构，而不只是高成熟团队的最佳实践。",
+            "- 前台化的治理对象是否能降低协作摩擦，还是会增加理解和操作成本。",
+        ]
+    )
+
+
+def build_final_ai_native_ux_section() -> str:
+    lines = [
+        "从 AI-native UX 角度看，这组材料要求产品把责任、决策、沟通和审计都显式化为用户可见对象，而不是只把它们藏在模型调用和后台流程里。",
+    ]
+    for item in FINAL_WRITEBACK_UX_OBJECTS:
+        lines.append(f"- {item['name']}：{item['description']}")
+    return "\n".join(lines)
+
+
 def parse_review_theme_blocks(review_text: str) -> list[dict[str, str]]:
     blocks: list[dict[str, str]] = []
     for chunk in review_text.split("### 主题：")[1:]:
@@ -376,16 +535,17 @@ def parse_review_theme_blocks(review_text: str) -> list[dict[str, str]]:
             continue
         block = {
             "title": lines[0].strip(),
-            "quote": "",
+            "quotes": [],
             "paraphrase": "",
             "evidence": "",
             "why": "",
         }
         current_key = ""
+        prelude_lines: list[str] = []
         for line in lines[1:]:
             stripped = line.strip()
             if stripped == "**Direct quote**":
-                current_key = "quote"
+                current_key = "quotes"
                 continue
             if stripped == "**Paraphrase**":
                 current_key = "paraphrase"
@@ -396,12 +556,26 @@ def parse_review_theme_blocks(review_text: str) -> list[dict[str, str]]:
             if stripped == "**Why it matters**":
                 current_key = "why"
                 continue
-            if not stripped or not current_key:
+            if not stripped:
+                continue
+            if not current_key:
+                prelude_lines.append(stripped)
+                continue
+            if current_key == "quotes":
+                block["quotes"].append(stripped)
+                current_key = ""
                 continue
             if block[current_key]:
                 block[current_key] += "\n" + stripped
             else:
                 block[current_key] = stripped
+        if prelude_lines:
+            prelude_text = " ".join(prelude_lines)
+            block["paraphrase"] = (
+                f"{prelude_text} {block['paraphrase']}".strip()
+                if block["paraphrase"]
+                else prelude_text
+            )
         blocks.append(block)
     return blocks
 
@@ -497,78 +671,32 @@ def build_longform_sections(
     synthesis_text: str,
 ) -> dict[str, str]:
     outline = build_longform_outline(intake_text, synthesis_text)
-    collaboration_mode = str(outline["collaboration_mode"])
-    target_audience = str(outline["target_audience"])
-    extra_questions = [str(item) for item in outline["extra_questions"]]
-    stable_themes = [str(item) for item in outline["stable_themes"]]
-    preserved_tensions = [str(item) for item in outline["preserved_tensions"]]
-    role_map = build_episode_role_map(synthesis_text)
-    episode_slugs = collect_episode_slugs(synthesis_text)
-    evidence_lines: list[str] = []
-    for slug in episode_slugs:
-        role = role_map.get(slug, "")
-        evidence = collect_evidence_for_episode(slug)
-        anchor = select_evidence_anchor(slug, evidence)
-        evidence_lines.append(f"- `{slug}`：{role} 证据锚点：{anchor}")
-
-    question_focus = "、".join(format_extra_question(question) for question in extra_questions)
-    theme_focus = build_theme_focus(stable_themes)
-
-    audience_focus_map = {
-        "team": "对团队读者来说，重点不是单个 agent 更聪明，而是多人协作时的分工、交接与治理边界是否开始被产品显式承接。",
-        "exec": "对决策者来说，重点是这种结构是否正在从实验性 workflow 变成可投入组织资源的默认能力层。",
-        "self": "对个人使用者来说，重点是这种结构是否真的把复杂任务拆成了可控、可复用、可校验的执行网络。",
+    research_direction, direction_status = build_research_question(intake_text)
+    question_source_map = {
+        "user_provided": "用户给定",
+        "system_suggested_pending": "系统建议，待用户批准",
+        "system_suggested_approved": "系统建议，已批准",
     }
-    audience_focus = audience_focus_map.get(
-        target_audience,
-        "重点是这种结构变化是否已经从局部技巧上升为可复用的产品组织方式。",
-    )
-    collaboration_focus = (
-        "在 integrated 协作模式下，这里把判断、机制和证据收束进同一条叙事主线。"
-        if collaboration_mode == "integrated"
-        else "这里先把判断、机制和证据拆开描述，再回到统一结论。"
-    )
-    subtitle_clause = f"副标题“{subtitle}”对应的判断路径也会被一并展开。" if subtitle else ""
-    question_lede = (
-        build_question_lede(question_focus)
-        if question_focus
-        else "本次追问聚焦于这组材料是否已经支撑结构层判断。"
-    )
-    summary = (
-        f"这篇报告以“{title}”为主问题，围绕五条一线播客语料，回答 multi-agent 是否正在从更强的工作流包装，"
-        f"走向可治理的 Agent Team 结构。{audience_focus}{subtitle_clause}"
-    )
     judgment = str(outline["core_judgment"])
-    mechanism = (
-        "这组材料共同显示，agent orchestration 的价值并不在于把多个智能体机械排队，"
-        "而在于把测试、容器、权限、审核与任务分工嵌入执行机制里。"
-        "一旦这些控制层被稳定地纳入系统设计，multi-agent 就不再只是编排技巧，"
-        f"而开始接近产品能力边界的重新定义。稳定主题里反复出现的 {theme_focus}，"
-        "说明这次变化已经不只是能力数量增加，而是在重写系统如何被约束、协作和验证。"
+    preserved_tensions = [str(item) for item in outline["preserved_tensions"]]
+    review_sections = build_pilot_review_pack_sections(intake_text, synthesis_text)
+    subtitle_clause = f"副标题“{subtitle}”对应的判断路径也会被一并展开。" if subtitle else ""
+    intro = (
+        f"本轮先按三主题簇做综述，不按播客顺序复述，也不先给最终判断。"
+        f"这份 writeback 直接把“{title}”当作同一产品方向下的结构性证据，而不是播客摘要。{subtitle_clause}"
     )
-    workflow = (
-        f"{collaboration_focus}系统从单 agent 响应工具，"
-        "变成可以在明确边界下分派、回收、校验和交接工作的执行网络。"
-        "这会把原本隐性的协作约束，例如谁负责审批、谁能调用什么资源、"
-        "哪些结果需要复核，变成产品结构的一部分。"
-    )
-    extra = (
-        f"{question_lede}"
-        "现有证据已经足以说明这不是简单的 feature 堆叠。"
-        "五条语料都在重复同一件事：当 agent 需要稳定承担不同角色、"
-        "在不同权限层运行，并且接受测试与治理约束时，产品形态就从单体助手转向 Agent Team。"
-        "但这条范式迁移是否已经完全稳定，仍取决于这些控制层能否持续成为默认产品结构，"
-        "而不是只出现在工程演示或高成熟团队的局部实践中。"
-    )
-    tensions = "\n".join(f"- {item}" for item in preserved_tensions)
     return {
-        "summary": summary,
+        "intro": intro,
+        "question": f"{research_direction}\n\n问题来源：{question_source_map.get(direction_status, direction_status or '用户给定')}",
+        "review": build_final_longform_review_section(review_sections["review"]),
         "judgment": judgment,
-        "mechanism": mechanism,
-        "workflow": workflow,
-        "extra": extra,
-        "evidence": "\n".join(evidence_lines),
-        "tensions": tensions,
+        "problem": build_final_problem_statement(),
+        "assumptions": build_final_assumptions(),
+        "ux": build_final_ai_native_ux_section(),
+        "research_direction_value": research_direction,
+        "direction_status_value": direction_status,
+        "research_direction": build_writeback_research_direction(research_direction, direction_status),
+        "tensions": "\n".join(f"- {item}" for item in preserved_tensions),
     }
 
 
@@ -651,15 +779,7 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
     if not intake_id:
         raise SystemExit("missing intake_id in intake record")
 
-    research_direction, direction_status = build_research_question(intake_text)
-    review_sections = build_review_pack_sections(intake_text, synthesis_text)
-    ux_lens_points = build_ai_native_ux_lens_pack()
-    ux_body = "\n".join(f"- {point}" for point in ux_lens_points) or "- 暂无 AI-native UX lens point"
-    intro_body = build_writeback_intro(review_sections["intro"], ux_lens_points)
-    literature_review = build_writeback_literature_review(review_sections["review"])
-    problem_body = build_writeback_problem(review_sections["problem"])
-    assumptions_body = build_writeback_assumptions(review_sections["assumptions"])
-    research_direction_body = build_writeback_research_direction(research_direction, direction_status)
+    sections = build_longform_sections(args.title, args.subtitle, intake_text, synthesis_text)
     return f"""# Writeback Proposal
 
 - writeback_id: `{args.writeback_id}`
@@ -669,8 +789,8 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 - focus_priority: {format_list(read_list_field(intake_text, 'focus_priority'))}
 - special_attention: {format_list(read_list_field(intake_text, 'special_attention'))}
 - target_audience: `{read_field(intake_text, 'target_audience')}`
-- research_direction: `{research_direction}`
-- direction_status: `{direction_status}`
+- research_direction: `{sections["research_direction_value"]}`
+- direction_status: `{sections["direction_status_value"]}`
 - synthesis_ref: `{read_field(synthesis_text, 'synthesis_id')}`
 
 ## 标题
@@ -683,41 +803,39 @@ def render_longform_writeback(args: argparse.Namespace) -> str:
 
 ## 研究问题
 
-{review_sections["question"]}
+{sections["question"]}
 
 ## 综述导言
 
-{intro_body}
+{sections["intro"]}
 
 ## 文献综述
 
-{literature_review}
+{sections["review"]}
 
 ## 综合判断
 
-{read_section(synthesis_text, '核心综合判断')}
+{sections["judgment"]}
 
 ## Problem Statement
 
-{problem_body}
+{sections["problem"]}
 
 ## Assumptions
 
-{assumptions_body}
+{sections["assumptions"]}
 
 ## AI-native UX 视角
 
-从 AI-native UX 角度看，这组材料共同把讨论从“agent 会不会做事”推进到“人如何与 agent 可靠分工”。当前最值得保留的观察维度包括：
-
-{ux_body}
+{sections["ux"]}
 
 ## 本轮 Research Direction
 
-{research_direction_body}
+{sections["research_direction"]}
 
 ## 保留分歧
 
-{review_sections["tensions"]}
+{sections["tensions"]}
 """
 
 
@@ -731,7 +849,7 @@ def render_review_pack(args: argparse.Namespace) -> str:
     except OSError:
         raise SystemExit("missing or unreadable synthesis file")
 
-    sections = build_review_pack_sections(intake_text, synthesis_text)
+    sections = build_pilot_review_pack_sections(intake_text, synthesis_text)
     return f"""# Research Review Pack
 
 ## Research Question

@@ -3,6 +3,15 @@ import subprocess
 import yaml
 
 
+def matrix_writeback_paths() -> list[Path]:
+    writeback_dir = Path("library/writebacks/podcasts/matrix")
+    return sorted(
+        path
+        for path in writeback_dir.glob("*.md")
+        if path.name != "integrated-team-paradigm.md"
+    )
+
+
 def test_writeback_matrix_has_12_rows():
     data = yaml.safe_load(Path("seed/writeback-matrix-test.yaml").read_text())
     rows = data["matrix"]
@@ -108,11 +117,10 @@ def test_writeback_matrix_cli_generates_writebacks(tmp_path):
 
 def test_library_matrix_has_12_intakes_and_12_writebacks():
     intake_dir = Path("library/writeback-intakes/podcasts/matrix")
-    writeback_dir = Path("library/writebacks/podcasts/matrix")
     assert len(list(intake_dir.glob("*.md"))) == 12
-    assert len(list(writeback_dir.glob("*.md"))) == 12
+    assert len(matrix_writeback_paths()) == 12
     sample_intake = sorted(intake_dir.glob("*.md"))[0].read_text()
-    sample_writeback = sorted(writeback_dir.glob("*.md"))[0].read_text()
+    sample_writeback = matrix_writeback_paths()[0].read_text()
     assert "- collaboration_mode:" in sample_intake
     assert "- target_audience:" in sample_intake
     assert "- extra_questions:" in sample_intake
@@ -122,9 +130,8 @@ def test_library_matrix_has_12_intakes_and_12_writebacks():
 
 
 def test_matrix_outputs_do_not_collapse_to_identical_headers():
-    writeback_dir = Path("library/writebacks/podcasts/matrix")
     headers = []
-    for path in sorted(writeback_dir.glob("*.md")):
+    for path in matrix_writeback_paths():
         text = path.read_text()
         headers.append((path.name, "## 副标题" in text, "- target_audience:" in text, "- synthesis_ref:" in text))
     assert len({item[0] for item in headers}) == 12
@@ -132,8 +139,7 @@ def test_matrix_outputs_do_not_collapse_to_identical_headers():
 
 
 def test_matrix_outputs_cover_all_audiences_and_modes():
-    writeback_dir = Path("library/writebacks/podcasts/matrix")
-    text = "\n".join(path.read_text() for path in writeback_dir.glob("*.md"))
+    text = "\n".join(path.read_text() for path in matrix_writeback_paths())
     for token in ["`self`", "`team`", "`exec`", "`research_archive`"]:
         assert token in text
     for token in ["`integrated`", "`sectioned`", "`appendix`"]:

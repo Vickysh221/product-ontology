@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 import subprocess
 
@@ -211,18 +212,17 @@ def test_writeback_generate_render_longform_has_real_evidence_and_no_placeholder
     assert "待由 evidence" not in text
     assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
     assert "- direction_status: `user_provided`" in text
-    assert "代表引文：" in text
+    assert "### 主题 1：执行控制层" in text
+    assert "代表引文 1：" in text
+    assert "代表引文 2：" in text
     assert "观察：" in text
     assert "证据来源：" in text
     assert "为什么重要：" in text
-    assert "Direct quote" not in text
-    assert "Paraphrase" not in text
-    assert "Evidence" not in text
-    assert "Why it matters" not in text
+    assert "责任状态卡" in text
+    assert "分级决策卡" in text
+    assert "异步沟通面板" in text
+    assert "审计与证据抽屉" in text
     assert "## Review Introduction" not in text
-    assert "- user goal loop" in text
-    assert "- agent behavior contract" in text
-    assert "- 注意力仲裁" in text
     assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
     assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
     assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
@@ -278,10 +278,10 @@ def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
     assert "因为它在强调 强调" not in text
     assert "。。" not in text
     assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
-    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
-    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
-    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
-    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "[11:28] - 徐文浩: 自动化的测试，第二个，你所有的提交都会触发 AI 给你做代码审核，" in text
+    assert "[18:56] - 覃睿: 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
+    assert "[01:16:57] - 任鑫: 我认为我这个人是一个一百人的公司。" in text
+    assert "[01:04:46] - 徐文浩: 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
     assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
 
 
@@ -292,7 +292,8 @@ def test_research_direction_writeback_contains_review_driven_sections(tmp_path):
     assert "## 研究问题" in text
     assert "## 综述导言" in text
     assert "## 文献综述" in text
-    assert "代表引文：" in text
+    assert "代表引文 1：" in text
+    assert "代表引文 2：" in text
     assert "观察：" in text
     assert "证据来源：" in text
     assert "为什么重要：" in text
@@ -300,10 +301,10 @@ def test_research_direction_writeback_contains_review_driven_sections(tmp_path):
     assert "## Assumptions" in text
     assert "## AI-native UX 视角" in text
     assert "## 本轮 Research Direction" in text
-    assert "Direct quote" not in text
-    assert "Paraphrase" not in text
-    assert "Evidence" not in text
-    assert "Why it matters" not in text
+    assert "责任状态卡" in text
+    assert "分级决策卡" in text
+    assert "异步沟通面板" in text
+    assert "审计与证据抽屉" in text
     assert "## Research Question" not in text
     assert "## Review Introduction" not in text
 
@@ -320,11 +321,26 @@ def test_materialized_review_pack_has_research_sections():
     assert "因为它在强调 强调" not in text
     assert "。。" not in text
     assert "[43:02] 写代码的本质不在于快速产出，而在于管理复杂度。" in text
-    assert "[11:38] 是不是我反而成为了未来人机协作最大的一个瓶颈。" in text
-    assert "[18:56] 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
-    assert "[01:16:57] 我认为我这个人是一个一百人的公司。" in text
-    assert "[01:04:46] 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
+    assert "[11:28] - 徐文浩: 自动化的测试，第二个，你所有的提交都会触发 AI 给你做代码审核，" in text
+    assert "[18:56] - 覃睿: 和你把一个人当一个员工时，你就直接这么去想，你发现他就完全不一样。" in text
+    assert "[01:16:57] - 任鑫: 我认为我这个人是一个一百人的公司。" in text
+    assert "[01:04:46] - 徐文浩: 你不应该干活嘛，你应该给 AI 塑造一个良好的工作环境嘛。" in text
     assert "[00:02] AI 是人类历史上最激动人心的技术革命" not in text
+
+
+def test_materialized_review_pack_uses_three_theme_clusters():
+    text = Path("library/review-packs/podcasts/review-pack-agent-team-paradigm.md").read_text()
+    cluster_titles = re.findall(r"^### 主题：(.+)$", text, flags=re.M)
+    assert cluster_titles == ["执行控制层", "协作与角色层", "治理与前台 UX 外显层"]
+    assert text.count("### 主题：") == 3
+
+
+def test_materialized_review_pack_has_multiple_quotes_per_cluster():
+    text = Path("library/review-packs/podcasts/review-pack-agent-team-paradigm.md").read_text()
+    clusters = re.split(r"^### 主题：.+$", text, flags=re.M)[1:]
+    assert len(clusters) == 3
+    for cluster in clusters:
+        assert cluster.count("**Direct quote**") == 2
 
 
 def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
@@ -349,19 +365,34 @@ def test_materialized_integrated_team_paradigm_is_longform():
     assert "## 本轮 Research Direction" in text
     assert "- research_direction: `multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移`" in text
     assert "- direction_status: `user_provided`" in text
-    assert "### 线索 1：" in text
-    assert "代表引文：" in text
+    assert "### 主题 1：执行控制层" in text
+    assert "### 主题 2：协作与角色层" in text
+    assert "### 主题 3：治理与前台 UX 外显层" in text
+    assert "代表引文 1：" in text
+    assert "代表引文 2：" in text
     assert "观察：" in text
     assert "证据来源：" in text
     assert "为什么重要：" in text
-    assert "Direct quote" not in text
-    assert "Paraphrase" not in text
-    assert "Evidence" not in text
-    assert "Why it matters" not in text
     assert "## Review Introduction" not in text
-    assert "- user goal loop" in text
-    assert "- agent behavior contract" in text
-    assert "- 注意力仲裁" in text
-    assert "- handoff" in text
-    assert "- rollback" in text
-    assert "- 责任" in text
+    assert "责任状态卡" in text
+    assert "分级决策卡" in text
+    assert "异步沟通面板" in text
+    assert "审计与证据抽屉" in text
+
+
+def test_materialized_pilot_writeback_uses_three_review_clusters():
+    text = Path("library/writebacks/podcasts/matrix/integrated-team-paradigm.md").read_text()
+    cluster_titles = re.findall(r"^### 主题 \d+：(.+)$", text, flags=re.M)
+    assert cluster_titles == ["执行控制层", "协作与角色层", "治理与前台 UX 外显层"]
+    assert text.count("代表引文 1：") == 3
+    assert text.count("代表引文 2：") == 3
+    assert text.count("证据来源：") == 3
+
+
+def test_materialized_pilot_writeback_ai_native_ux_has_design_objects():
+    text = Path("library/writebacks/podcasts/matrix/integrated-team-paradigm.md").read_text()
+    assert "## AI-native UX 视角" in text
+    assert "责任状态卡" in text
+    assert "分级决策卡" in text
+    assert "异步沟通面板" in text
+    assert "审计与证据抽屉" in text
