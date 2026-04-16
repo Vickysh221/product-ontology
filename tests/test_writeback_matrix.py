@@ -104,3 +104,10 @@ def test_writeback_matrix_cli_generates_writebacks(tmp_path):
     assert "- synthesis_ref:" in sample_writeback
     assert "- target_audience:" in sample_writeback
     assert "## 副标题" in sample_writeback
+
+
+def test_library_matrix_has_12_intakes_and_12_writebacks():
+    intake_dir = Path("library/writeback-intakes/podcasts/matrix")
+    writeback_dir = Path("library/writebacks/podcasts/matrix")
+    assert len(list(intake_dir.glob("*.md"))) == 12
+    assert len(list(writeback_dir.glob("*.md"))) == 12
