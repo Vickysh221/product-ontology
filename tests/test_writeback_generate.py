@@ -257,6 +257,7 @@ def test_writeback_generate_render_review_pack_creates_research_sections(tmp_pat
     assert "## Counter-Signals And Tensions" in text
     assert "## Draft Problem Statement" in text
     assert "## Draft Assumptions" in text
+    assert "multi-agent 是否已经从高级 workflow 包装，进入可治理的 Agent Team 范式迁移" in text
 
 
 def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
@@ -267,6 +268,8 @@ def test_review_pack_preserves_quote_paraphrase_evidence_shape(tmp_path):
     assert "Paraphrase" in text
     assert "Evidence" in text
     assert "Why it matters" in text
+    assert "podwise-ai-7758431-2cd3ef48" in text
+    assert text.count("### 主题：") >= 2
 
 
 def test_writeback_generate_render_longform_matches_committed_pilot(tmp_path):
