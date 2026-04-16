@@ -648,3 +648,9 @@ Type consistency:
 - pilot slug is consistently `integrated-team-paradigm`
 - synthesis file and intake file paths are consistent across all tasks
 
+## Implementation Notes
+
+- `render` remains the placeholder path for matrix plumbing
+- `render-longform` is now the narrative generation path
+- only `integrated-team-paradigm` was upgraded in this pass
+- the remaining 11 matrix variants still require a follow-up rollout plan
