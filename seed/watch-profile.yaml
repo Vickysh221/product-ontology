@@ -1,0 +1,88 @@
+domains:
+  - agent
+  - ai
+  - 新能源汽车
+  - agentos
+  - 具身智能
+
+brands:
+  - OpenAI
+  - Claude Code
+  - Gemini
+  - Tesla
+  - 小鹏
+  - 理想
+  - 小米汽车
+
+preferred_sources:
+  channels:
+    - AI炼金术
+    - 十字路口 Crossing
+    - 張小珺 Xiaojùn
+  speakers:
+    - Sam Altman
+    - Elon Musk
+    - 何小鹏
+    - 李想
+
+active_topics:
+  - VLA
+  - harness agent
+  - OpenClaw
+  - VLM
+  - Grok
+  - 司机大模型
+  - V2A
+  - 自动驾驶可解释性
+
+authority_rules:
+  speaker_roles:
+    founder_exec: 3
+    product_lead: 2
+    engineering_lead: 2
+    practitioner: 1
+  source_types:
+    first_hand_interview: 3
+    first_hand_explainer: 2
+    deep_domain_commentary: 1
+    generic_commentary: 0
+  preferred_channel_bonus: 2
+  preferred_speaker_bonus: 2
+
+candidate_rules:
+  required_ontology_signals:
+    - change
+    - capability
+    - problem
+    - trust
+    - workflow
+    - governance
+  downgrade_if_contains:
+    - 未来一定
+    - 颠覆一切
+    - 遥遥领先
+    - 彻底改变世界
+  require_evidence_anchor: true
+  min_event_score: 4
+  min_claim_score: 5
+
+extraction_focus:
+  priority_event_slots:
+    - observable_change
+    - change_layer
+    - affected_capability
+    - target_problem
+    - trust_signal
+    - governance_signal
+  priority_claim_slots:
+    - mechanism
+    - workflow_implication
+    - category_signal
+    - why_it_matters
+    - missing_evidence
+    - counterargument
+  priority_lenses:
+    - product
+    - ux_collaboration
+    - tech
+    - contrarian
