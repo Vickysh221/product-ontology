@@ -9,6 +9,14 @@
 1. 审核候选 writeback
 2. 更新 patterns / methods / theses（对应当前 library 结构）
 
+### Writeback Chain
+
+`Source -> Artifact -> Candidate -> Review/Verdict -> Writeback Intake -> Writeback`
+
+- writeback generation always passes through intake
+- the user may leave intake fields empty
+- default report rules are applied when no extra guidance is provided
+
 ### 每月做一件事
 - 更新长期 thesis，并显式标注哪些判断被强化、削弱或推翻
 
