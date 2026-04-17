@@ -5,6 +5,7 @@ import hashlib
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +13,13 @@ LINK_TO_REPORT_ROOT = ROOT / "library" / "sessions" / "link-to-report"
 INTAKE_ROOT = ROOT / "library" / "writeback-intakes" / "link-to-report"
 REVIEW_PACK_ROOT = ROOT / "library" / "review-packs" / "link-to-report"
 WRITEBACK_ROOT = ROOT / "library" / "writebacks" / "link-to-report"
+
+LINK_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("xiaohongshu", ("xiaohongshu.com", "xhslink.com", "xhs.cn")),
+    ("wechat", ("weixin.qq.com", "mp.weixin.qq.com", "wechat.com")),
+    ("podcast", ("podcast", "spotify.com", "podcasts.apple.com", "apple.com/podcast")),
+    ("video", ("youtube.com", "bilibili.com", "tiktok.com", "douyin.com")),
+)
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -38,6 +46,158 @@ def run_summary_path(bundle_id: str) -> Path:
     return bundle_dir(bundle_id) / "run-summary.md"
 
 
+def detect_link_type(link: str) -> str:
+    normalized = link.strip().lower()
+    if not normalized:
+        return "unknown"
+    if normalized.startswith("file://") or normalized.startswith("/"):
+        return "local-file"
+    parsed = urlparse(normalized)
+    haystack = f"{parsed.netloc}{parsed.path}"
+    if not parsed.netloc:
+        return "unknown"
+    for link_type, needles in LINK_TYPE_RULES:
+        if any(needle in haystack for needle in needles):
+            return link_type
+    return "web"
+
+
+def format_list(values: list[str]) -> str:
+    if not values:
+        return "[]"
+    return "[" + ", ".join(f"`{value}`" for value in values) + "]"
+
+
+def read_markdown_field(text: str, field_name: str) -> str:
+    prefix = f"- {field_name}: `"
+    for line in text.splitlines():
+        if line.startswith(prefix) and line.endswith("`"):
+            return line[len(prefix) : -1]
+    return ""
+
+
+def read_markdown_list_field(text: str, field_name: str) -> list[str]:
+    prefix = f"- {field_name}: ["
+    for line in text.splitlines():
+        if not line.startswith(prefix) or not line.endswith("]"):
+            continue
+        inner = line[len(prefix) : -1].strip()
+        if not inner:
+            return []
+        return [item.strip().strip("`") for item in inner.split(",") if item.strip()]
+    return []
+
+
+def render_run_summary_markdown(bundle_id: str, links: list[str], dry_run: bool) -> str:
+    link_types = sorted({detect_link_type(link) for link in links})
+    lines = [
+        "# Link Bundle Run Summary",
+        "",
+        f"- bundle_id: `{bundle_id}`",
+        f"- dry_run: `{'true' if dry_run else 'false'}`",
+        f"- link_count: `{len(links)}`",
+        f"- link_types: {format_list(link_types)}",
+        f"- links: {format_list(links)}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def render_intake_markdown(
+    bundle_id: str,
+    links: list[str],
+    direction_text: str,
+    direction_status: str,
+    link_types: list[str],
+) -> str:
+    return "\n".join(
+        [
+            "# Writeback Intake Record",
+            "",
+            f"- intake_id: `intake-{bundle_id}`",
+            f"- bundle_id: `{bundle_id}`",
+            f"- research_direction: `{direction_text}`",
+            f"- direction_status: `{direction_status}`",
+            f"- link_count: `{len(links)}`",
+            f"- link_types: {format_list(link_types)}",
+            f"- successful_links: {format_list(links)}",
+            "- used_default_rules: `true`",
+            "",
+        ]
+    )
+
+
+def render_review_pack_markdown(
+    bundle_id: str,
+    direction_text: str,
+    direction_status: str,
+    link_types: list[str],
+    links: list[str],
+) -> str:
+    theme_lines: list[str] = []
+    for index, link in enumerate(links, start=1):
+        theme_lines.extend(
+            [
+                f"### Link {index}",
+                "",
+                f"- url: `{link}`",
+                f"- detected_type: `{detect_link_type(link)}`",
+                "",
+            ]
+        )
+    return "\n".join(
+        [
+            "# Research Review Pack",
+            "",
+            f"- bundle_id: `{bundle_id}`",
+            f"- direction_status: `{direction_status}`",
+            f"- research_direction: `{direction_text}`",
+            f"- link_types: {format_list(link_types) if link_types else '[]'}",
+            "",
+            "## Link Themes",
+            "",
+            *theme_lines,
+            "## Counter-Signals And Tensions",
+            "",
+            "- MVP 占位：当前只保留链接结构和方向状态，后续再补跨链接主题聚类。",
+            "",
+        ]
+    )
+
+
+def render_writeback_markdown(
+    bundle_id: str,
+    direction_text: str,
+    direction_status: str,
+    link_types: list[str],
+) -> str:
+    return "\n".join(
+        [
+            "# Writeback Proposal",
+            "",
+            f"- writeback_id: `writeback-{bundle_id}`",
+            f"- intake_id: `intake-{bundle_id}`",
+            f"- bundle_id: `{bundle_id}`",
+            f"- direction_status: `{direction_status}`",
+            f"- research_direction: `{direction_text}`",
+            f"- link_types: {format_list(link_types) if link_types else '[]'}",
+            "",
+            "## 主判断",
+            "",
+            "MVP 占位：先把写回链路打通，后续再补真正的结构化 synthesis。",
+            "",
+            "## Review Pack 引用",
+            "",
+            f"- review_pack_ref: `library/review-packs/link-to-report/{bundle_id}.md`",
+            "",
+            "## 保留张力",
+            "",
+            "- 当前版本只阻止 `system_suggested_pending` 的方向继续生成。",
+            "",
+        ]
+    )
+
+
 def render_direction_markdown(bundle_id: str, research_direction: str, direction_status: str) -> str:
     return "\n".join(
         [
@@ -52,8 +212,17 @@ def render_direction_markdown(bundle_id: str, research_direction: str, direction
 
 
 def command_ingest_links(args: argparse.Namespace) -> int:
-    print("ingest-links is not implemented yet", file=sys.stderr)
-    return 2
+    links = [link.strip() for link in args.links if link.strip()]
+    if not links:
+        print("links are required for ingest-links", file=sys.stderr)
+        return 2
+
+    bundle_id = slugify_bundle_id(args.bundle_id) if args.bundle_id else derive_bundle_id(links, "")
+    summary_path = run_summary_path(bundle_id)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text(render_run_summary_markdown(bundle_id, links, args.dry_run), encoding="utf-8")
+    print(summary_path.relative_to(ROOT))
+    return 0
 
 
 def command_propose_direction(args: argparse.Namespace) -> int:
@@ -80,9 +249,61 @@ def command_propose_direction(args: argparse.Namespace) -> int:
     return 0
 
 
+def load_direction_input(args: argparse.Namespace) -> tuple[str, str]:
+    if args.direction_file:
+        path = Path(args.direction_file)
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            raise SystemExit("missing or unreadable direction file")
+        direction_text = read_markdown_field(text, "research_direction") or text.strip()
+        direction_status = read_markdown_field(text, "direction_status") or "user_provided"
+        return direction_text, direction_status
+    return args.direction.strip(), "user_provided"
+
+
+def write_output_file(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
 def command_generate_report(args: argparse.Namespace) -> int:
     if not args.direction and not args.direction_file:
         print("direction is required for generate-report", file=sys.stderr)
         return 2
-    print("generate-report is not implemented yet", file=sys.stderr)
-    return 2
+
+    bundle_id = slugify_bundle_id(args.bundle_id)
+    summary_path = run_summary_path(bundle_id)
+    if not summary_path.exists():
+        print("bundle run summary is missing", file=sys.stderr)
+        return 2
+
+    summary_text = summary_path.read_text(encoding="utf-8")
+    links = read_markdown_list_field(summary_text, "links")
+    link_types = read_markdown_list_field(summary_text, "link_types")
+    direction_text, direction_status = load_direction_input(args)
+    if direction_status == "system_suggested_pending":
+        print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)
+        return 2
+
+    intake_text = render_intake_markdown(bundle_id, links, direction_text, direction_status, link_types)
+    review_pack_text = render_review_pack_markdown(bundle_id, direction_text, direction_status, link_types, links)
+    writeback_text = render_writeback_markdown(bundle_id, direction_text, direction_status, link_types)
+
+    intake_path = INTAKE_ROOT / f"{bundle_id}.md"
+    review_pack_path = REVIEW_PACK_ROOT / f"{bundle_id}.md"
+    writeback_path = WRITEBACK_ROOT / f"{bundle_id}.md"
+
+    write_output_file(intake_path, intake_text)
+    write_output_file(review_pack_path, review_pack_text)
+    write_output_file(writeback_path, writeback_text)
+
+    if getattr(args, "review_pack_output", ""):
+        write_output_file(Path(args.review_pack_output), review_pack_text)
+    if getattr(args, "writeback_output", ""):
+        write_output_file(Path(args.writeback_output), writeback_text)
+
+    print(intake_path.relative_to(ROOT))
+    print(review_pack_path.relative_to(ROOT))
+    print(writeback_path.relative_to(ROOT))
+    return 0
