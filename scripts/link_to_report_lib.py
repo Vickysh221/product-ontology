@@ -116,20 +116,34 @@ def render_link_result_block(result: dict[str, object] | str) -> str:
 
 
 def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] | str], dry_run: bool) -> str:
-    normalized_results = [result if isinstance(result, dict) else {
-        "link": result,
-        "link_type": detect_link_type(result),
-        "status": "success",
-        "source_path": "",
-        "artifact_paths": [],
-        "failure_reason": "",
-    } for result in results]
+    normalized_results = [
+        result
+        if isinstance(result, dict)
+        else {
+            "link": result,
+            "link_type": detect_link_type(result),
+            "status": "success",
+            "source_path": "",
+            "artifact_paths": [],
+            "failure_reason": "",
+        }
+        for result in results
+    ]
     successful_results = [result for result in normalized_results if str(result.get("status", "")) == "success"]
-    failed_results = [result for result in normalized_results if str(result.get("status", "")) == "failed"]
-    link_types = sorted({str(result.get("link_type", detect_link_type(str(result.get("link", ""))))) for result in normalized_results})
+    failed_results = [result for result in normalized_results if str(result.get("status", "")) != "success"]
+    link_types = sorted(
+        {str(result.get("link_type", detect_link_type(str(result.get("link", ""))))) for result in normalized_results}
+    )
     all_links = [str(result.get("link", "")) for result in normalized_results]
     successful_links = [str(result.get("link", "")) for result in successful_results]
     failed_links = [str(result.get("link", "")) for result in failed_results]
+    source_paths = [str(result.get("source_path", "")) for result in successful_results if str(result.get("source_path", ""))]
+    artifact_paths = [
+        str(path)
+        for result in successful_results
+        for path in (result.get("artifact_paths", []) or [])
+        if str(path)
+    ]
     lines = [
         "# Link Bundle Run Summary",
         "",
@@ -140,10 +154,12 @@ def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] 
         f"- link_count: `{len(normalized_results)}`",
         f"- link_types: {format_list(link_types)}",
         f"- links: {format_list(all_links)}",
+        f"- source_paths: {format_list(source_paths)}",
+        f"- artifact_paths: {format_list(artifact_paths)}",
         f"- successful_links: {format_list(successful_links)}",
         f"- failed_links: {format_list(failed_links)}",
         "",
-        "## Link Results",
+        "## Per-Link Results",
         "",
     ]
     for index, result in enumerate(normalized_results, start=1):
@@ -389,7 +405,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     summary_text = summary_path.read_text(encoding="utf-8")
-    links = read_markdown_list_field(summary_text, "successful_links") or read_markdown_list_field(summary_text, "links")
+    links = read_markdown_list_field(summary_text, "links")
     link_types = read_markdown_list_field(summary_text, "link_types")
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":

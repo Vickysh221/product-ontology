@@ -48,7 +48,23 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     assert result == 0
     summary_path = link_root / bundle_id / "run-summary.md"
     text = summary_path.read_text(encoding="utf-8")
-    assert "- successful_link_count: `1`" in text
-    assert "- failed_link_count: `0`" in text
-    assert "library/sources/podcasts/demo.md" in text
-    assert "library/artifacts/podcasts/demo/transcript.md" in text
+    expected_lines = [
+        "# Link Bundle Run Summary",
+        f"- bundle_id: `{bundle_id}`",
+        "- dry_run: `false`",
+        "- successful_link_count: `1`",
+        "- failed_link_count: `0`",
+        "- link_count: `1`",
+        "- link_types: [`podcast`]",
+        "- links: [`https://podcasts.apple.com/us/podcast/example/id123`]",
+        "- source_paths: [`library/sources/podcasts/demo.md`]",
+        "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+        "## Per-Link Results",
+        "### Link Result 1",
+        "- source_path: `library/sources/podcasts/demo.md`",
+        "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+        "- failure_reason: ``",
+    ]
+    for line in expected_lines:
+        assert line in text
+    assert "## Link Results" not in text
