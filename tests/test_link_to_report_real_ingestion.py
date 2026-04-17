@@ -309,6 +309,103 @@ def test_generate_report_uses_reusable_report_builders(tmp_path, monkeypatch):
     cleanup_bundle_outputs(lib, bundle_id)
 
 
+def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setattr(lib, "ROOT", workspace_root)
+    monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
+    monkeypatch.setattr(lib, "INTAKE_ROOT", workspace_root / "library" / "writeback-intakes" / "link-to-report")
+    monkeypatch.setattr(lib, "REVIEW_PACK_ROOT", workspace_root / "library" / "review-packs" / "link-to-report")
+    monkeypatch.setattr(lib, "WRITEBACK_ROOT", workspace_root / "library" / "writebacks" / "link-to-report")
+    monkeypatch.setattr(lib, "load_official_target_urls", lambda: ["https://openai.com/news/"])
+    monkeypatch.setattr(lib.source_ingest, "ROOT", workspace_root)
+    monkeypatch.setattr(lib.source_ingest, "SOURCES_ROOT", workspace_root / "library" / "sources")
+    monkeypatch.setattr(lib.source_ingest, "ARTIFACTS_ROOT", workspace_root / "library" / "artifacts")
+
+    podcast_import = lib.podcast_import
+    monkeypatch.setattr(podcast_import, "ROOT", workspace_root)
+    monkeypatch.setattr(podcast_import, "SOURCES_DIR", workspace_root / "library" / "sources" / "podcasts")
+    monkeypatch.setattr(podcast_import, "ARTIFACTS_DIR", workspace_root / "library" / "artifacts" / "podcasts")
+    monkeypatch.setattr(
+        podcast_import,
+        "run_podwise",
+        lambda args: {
+            ("process", "https://podcasts.apple.com/us/podcast/example/id123"): "processed",
+            ("get", "transcript", "https://podcasts.apple.com/us/podcast/example/id123"): "podcast transcript",
+            ("get", "summary", "https://podcasts.apple.com/us/podcast/example/id123"): "podcast summary",
+            ("get", "highlights", "https://podcasts.apple.com/us/podcast/example/id123"): "podcast highlights",
+        }.get(tuple(args), "podwise output"),
+    )
+
+    xhs_import = lib.xiaohongshu_redbook_import
+    monkeypatch.setattr(xhs_import, "ROOT", workspace_root)
+
+    def fake_pull_with_redbook(args):
+        args.body = "xiaohongshu body"
+        args.comments_body = "xiaohongshu comments"
+        args.body_file = ""
+        args.comments_file = ""
+        return xhs_import.import_note(args)
+
+    monkeypatch.setattr(xhs_import, "pull_with_redbook", fake_pull_with_redbook)
+
+    links = [
+        "https://podcasts.apple.com/us/podcast/example/id123",
+        "https://www.xiaohongshu.com/explore/123",
+        "https://openai.com/news/",
+    ]
+    bundle_id = "real-ingestion-smoke"
+    cleanup_bundle_outputs(lib, bundle_id)
+    try:
+        result = lib.command_ingest_links(
+            argparse.Namespace(links=links, bundle_id=bundle_id, dry_run=False, force=False)
+        )
+        assert result == 0
+        summary_path = lib.run_summary_path(bundle_id)
+        summary_text = summary_path.read_text(encoding="utf-8")
+        parsed_results = lib.parse_link_result_blocks(summary_text)
+        assert [entry["status"] for entry in parsed_results] == ["success", "success", "success"]
+        assert "library/sources/podcasts" in summary_text
+        assert "library/sources/xiaohongshu" in summary_text
+        assert "library/sources/official" in summary_text
+
+        direction_file = tmp_path / "direction.md"
+        direction_file.write_text(
+            "\n".join(
+                [
+                    "# Research Direction Record",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- research_direction: `real-ingestion smoke direction`",
+                    "- direction_status: `user_provided`",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        generate = lib.command_generate_report(
+            argparse.Namespace(
+                bundle_id=bundle_id,
+                direction="",
+                direction_file=str(direction_file),
+                review_pack_output="",
+                writeback_output="",
+            )
+        )
+        assert generate == 0
+        intake_text = (lib.INTAKE_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        review_pack_text = (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        assert "- link_count: `3`" in intake_text
+        assert "- direction_status: `user_provided`" in intake_text
+        assert "real-ingestion smoke direction" in review_pack_text
+        assert "real-ingestion smoke direction" in writeback_text
+        assert "MVP 占位" not in review_pack_text
+        assert "MVP 占位" not in writeback_text
+    finally:
+        cleanup_bundle_outputs(lib, bundle_id)
+
+
 @pytest.mark.parametrize(
     "bad_result, expected_error",
     [

@@ -195,6 +195,10 @@ python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-f
 
 Current behavior:
 - `ingest-links` creates a bundle-scoped run summary under `library/sessions/link-to-report/<bundle-id>/run-summary.md`.
+- `ingest-links` now resolves real ingestion adapters for `podwise`, `xiaohongshu`, and `official` URLs.
+- `podwise` URLs import transcript, summary, and highlights artifacts.
+- `xiaohongshu` URLs import note text and can opt into comments when the adapter asks for them.
+- `official` URLs only ingest when they match an approved target in `seed/official-sources.yaml`.
 - `propose-direction` records one research direction at `library/sessions/link-to-report/<bundle-id>/direction.md`.
 - `generate-report` blocks if the direction is still `system_suggested_pending`.
 - Once the direction is approved or user-provided, the CLI writes:
@@ -204,8 +208,8 @@ Current behavior:
 
 Current scope:
 - This is the short-term manual-links path only.
-- The current MVP proves the end-to-end chain and field contract.
-- It does not yet perform real cross-platform full-text ingestion or direction ranking from raw content.
+- The current MVP proves the end-to-end chain and field contract with real ingestion adapters for podcast, Xiaohongshu, and official-link inputs.
+- It still does not rank directions from raw content or support unsupported generic web URLs.
 
 ## Source Architecture
 
