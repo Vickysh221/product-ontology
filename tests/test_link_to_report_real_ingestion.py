@@ -342,6 +342,40 @@ def test_render_writeback_from_bundle_keeps_research_direction_metadata_single_l
                 "failure_reason": "",
             }
         ],
+        review_pack_text="\n".join(
+            [
+                "# Research Review Pack",
+                "",
+                "## Thematic Literature Review",
+                "",
+                "### 主题：执行控制层",
+                "",
+                "**Direct quote**",
+                "- [00:31] Harness engineering 让 agent 能在围栏内协作。",
+                "",
+                "**Paraphrase**",
+                "- 这说明执行控制层开始进入产品主结构。",
+                "",
+                "**Evidence**",
+                "- `library/artifacts/podcasts/demo/transcript.md`",
+                "",
+                "**Why it matters**",
+                "- 这条证据支持治理结构不再只是后台实现。",
+                "",
+                "## Counter-Signals And Tensions",
+                "",
+                "- 执行控制层：仍需验证这是不是默认结构。",
+                "",
+                "## Draft Problem Statement",
+                "",
+                "如何把执行控制层收束成默认可用、可追踪、可解释的协作结构。",
+                "",
+                "## Draft Assumptions",
+                "",
+                "当前工作假设",
+                "- 执行控制层正在进入产品主结构。",
+            ]
+        ),
     )
 
     assert "- research_direction: `bundle-aware direction`" in text

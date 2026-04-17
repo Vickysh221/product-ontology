@@ -254,6 +254,32 @@ def test_parse_link_result_blocks_ignores_trailing_sections():
     assert results[0]["status"] == "success"
 
 
+def test_collect_bundle_artifact_paths_preserves_unique_per_link_outputs():
+    lib = load_link_to_report_lib_module()
+    results = [
+        {
+            "artifact_paths": [
+                "library/artifacts/podcasts/demo/summary.md",
+                "library/artifacts/podcasts/demo/highlights.md",
+            ]
+        },
+        {
+            "artifact_paths": [
+                "library/artifacts/podcasts/demo/highlights.md",
+                "library/artifacts/xiaohongshu/demo/full_text.md",
+            ]
+        },
+    ]
+
+    artifact_paths = lib.collect_bundle_artifact_paths(results)
+
+    assert artifact_paths == [
+        "library/artifacts/podcasts/demo/summary.md",
+        "library/artifacts/podcasts/demo/highlights.md",
+        "library/artifacts/xiaohongshu/demo/full_text.md",
+    ]
+
+
 def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
     lib = load_link_to_report_lib_module()
     bundle_id = "task-1-bundle"
@@ -261,6 +287,9 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
     try:
         bundle_dir = Path("library/sessions/link-to-report") / bundle_id
         bundle_dir.mkdir(parents=True, exist_ok=True)
+        artifact_root = Path("library/artifacts/podcasts/demo")
+        artifact_root.mkdir(parents=True, exist_ok=True)
+        (artifact_root / "transcript.md").write_text("## Content\n[00:31] transcript line\n", encoding="utf-8")
         (bundle_dir / "run-summary.md").write_text(
             "\n".join(
                 [
@@ -329,6 +358,13 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
         assert "- link_types: [`podcast`]" in writeback_text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
+        if artifact_root.exists():
+            for path in sorted(artifact_root.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+            artifact_root.rmdir()
 
 
 def test_generate_report_writes_three_files_from_direction_file(tmp_path):
@@ -342,6 +378,12 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
     try:
         bundle_dir = lib.bundle_dir(bundle_id)
         bundle_dir.mkdir(parents=True, exist_ok=True)
+        xhs_artifact_root = Path("library/artifacts/xiaohongshu/demo")
+        xhs_artifact_root.mkdir(parents=True, exist_ok=True)
+        (xhs_artifact_root / "full_text.md").write_text("## Content\nxiaohongshu note body\n", encoding="utf-8")
+        podcast_artifact_root = Path("library/artifacts/podcasts/demo")
+        podcast_artifact_root.mkdir(parents=True, exist_ok=True)
+        (podcast_artifact_root / "transcript.md").write_text("## Content\n[00:31] podcast transcript body\n", encoding="utf-8")
         (bundle_dir / "run-summary.md").write_text(
             "\n".join(
                 [
@@ -430,6 +472,160 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
         assert "artifact_paths" in writeback_text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
+        for artifact_root in [xhs_artifact_root, podcast_artifact_root]:
+            if artifact_root.exists():
+                for path in sorted(artifact_root.rglob("*"), reverse=True):
+                    if path.is_file():
+                        path.unlink()
+                    elif path.is_dir():
+                        path.rmdir()
+                artifact_root.rmdir()
+
+
+def test_generate_report_fails_when_artifact_path_is_missing(tmp_path):
+    bundle_id = "missing-artifact-bundle"
+    bundle_dir = Path("library/sessions/link-to-report") / bundle_id
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        (bundle_dir / "run-summary.md").write_text(
+            "\n".join(
+                [
+                    "# Link Bundle Run Summary",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- dry_run: `false`",
+                    "- successful_link_count: `1`",
+                    "- failed_link_count: `0`",
+                    "- source_paths: [`library/sources/podcasts/demo.md`]",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/summary.md`]",
+                    "",
+                    "## Per-Link Results",
+                    "",
+                    "### Link Result",
+                    "",
+                    "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                    "- link_type: `podcast`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/podcasts/demo.md`",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/summary.md`]",
+                    "- failure_reason: ``",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/link_to_report.py",
+                "generate-report",
+                "--bundle-id",
+                bundle_id,
+                "--direction",
+                "missing artifact path should fail",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode != 0
+        assert "missing artifact paths" in result.stderr
+    finally:
+        cleanup_bundle_outputs(load_link_to_report_lib_module(), bundle_id)
+
+
+def test_generate_report_consumes_artifact_content_in_outputs(tmp_path):
+    lib = load_link_to_report_lib_module()
+    bundle_id = "artifact-content-bundle"
+    cleanup_bundle_outputs(lib, bundle_id)
+    try:
+        bundle_dir = Path("library/sessions/link-to-report") / bundle_id
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        artifact_root = Path("library/artifacts/podcasts/demo")
+        artifact_root.mkdir(parents=True, exist_ok=True)
+        (artifact_root / "summary.md").write_text(
+            "## Content\nmulti-agent 的关键不在更多 agent，而在治理边界。\n",
+            encoding="utf-8",
+        )
+        (artifact_root / "highlights.md").write_text(
+            "## Content\n1. [00:31] Harness engineering 让 agent 能在围栏内协作。\n",
+            encoding="utf-8",
+        )
+        (bundle_dir / "run-summary.md").write_text(
+            "\n".join(
+                [
+                    "# Link Bundle Run Summary",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- dry_run: `false`",
+                    "- successful_link_count: `1`",
+                    "- failed_link_count: `0`",
+                    "- source_paths: [`library/sources/podcasts/demo.md`]",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/summary.md`, `library/artifacts/podcasts/demo/highlights.md`]",
+                    "",
+                    "## Per-Link Results",
+                    "",
+                    "### Link Result",
+                    "",
+                    "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                    "- link_type: `podcast`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/podcasts/demo.md`",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/summary.md`, `library/artifacts/podcasts/demo/highlights.md`]",
+                    "- failure_reason: ``",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        direction_file = tmp_path / "direction.md"
+        direction_file.write_text(
+            "\n".join(
+                [
+                    "# Research Direction Record",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- research_direction: `multi-agent 是否已经进入可治理的 Agent Team 范式迁移`",
+                    "- direction_status: `user_provided`",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/link_to_report.py",
+                "generate-report",
+                "--bundle-id",
+                bundle_id,
+                "--direction-file",
+                str(direction_file),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+        review_pack_text = (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        assert "Direct quote" in review_pack_text
+        assert "Harness engineering" in review_pack_text
+        assert "Why it matters" in review_pack_text
+        assert "## 文献综述" in writeback_text
+        assert "Harness engineering" in writeback_text
+        assert "## AI-native UX 视角" in writeback_text
+    finally:
+        cleanup_bundle_outputs(lib, bundle_id)
+        if artifact_root.exists():
+            for path in sorted(artifact_root.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+            artifact_root.rmdir()
 
 
 def test_link_to_report_dry_run_end_to_end_smoke(tmp_path):
@@ -489,9 +685,7 @@ def test_link_to_report_dry_run_end_to_end_smoke(tmp_path):
             capture_output=True,
             text=True,
         )
-        assert generate.returncode == 0, generate.stderr
-        assert (lib.INTAKE_ROOT / f"{bundle_id}.md").exists()
-        assert (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").exists()
-        assert (lib.WRITEBACK_ROOT / f"{bundle_id}.md").exists()
+        assert generate.returncode != 0
+        assert "no artifact paths available" in generate.stderr
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
