@@ -321,6 +321,34 @@ def test_generate_report_uses_reusable_report_builders(tmp_path, monkeypatch):
     cleanup_bundle_outputs(lib, bundle_id)
 
 
+def test_render_writeback_from_bundle_keeps_research_direction_metadata_single_line():
+    lib = load_link_to_report_lib_module()
+
+    text = lib.writeback_generate.render_writeback_from_bundle(
+        bundle_id="bundle-writeback-shape",
+        source_paths=["library/sources/podcasts/demo.md"],
+        artifact_paths=["library/artifacts/podcasts/demo/transcript.md"],
+        direction_text="bundle-aware direction",
+        direction_status="user_provided",
+        links=["https://podcasts.apple.com/us/podcast/example/id123"],
+        link_types=["podcast"],
+        link_results=[
+            {
+                "link": "https://podcasts.apple.com/us/podcast/example/id123",
+                "link_type": "podcast",
+                "status": "success",
+                "source_path": "library/sources/podcasts/demo.md",
+                "artifact_paths": ["library/artifacts/podcasts/demo/transcript.md"],
+                "failure_reason": "",
+            }
+        ],
+    )
+
+    assert "- research_direction: `bundle-aware direction`" in text
+    assert "## 本轮 Research Direction" in text
+    assert "- 当前状态：" in text
+
+
 def test_generate_report_preserves_per_link_lineage_for_reusable_builders(tmp_path, monkeypatch):
     lib = load_link_to_report_lib_module()
     workspace_root = tmp_path / "workspace"

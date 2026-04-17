@@ -50,7 +50,7 @@ This design does not cover:
 
 ## Supported Inputs In This Phase
 
-The first real-ingestion upgrade should support exactly three link families:
+The first real-ingestion upgrade should recognize exactly three link families:
 
 - `podwise`
 - `xiaohongshu`
@@ -78,13 +78,16 @@ If transcript or comments already exist for the same source slug, they should be
 
 ### 3. Official
 
-Expected real outputs:
-- one real official `Source`
-- one real `full_text` artifact
+Expected behavior in this phase:
+- recognize approved official targets
+- keep a reserved adapter surface for later real ingestion
+- fail transparently when real page content is unavailable
 
-This phase may rely on already-accessible official content or manual page text provided to the existing source/artifact writing helpers.
+This phase does not require a shipped official success path.
 
-The core requirement is that official links also produce normalized records rather than staying at the raw-link layer.
+The short-term requirement is honesty:
+- no fabricated official `full_text`
+- no false `success` result when content is unavailable
 
 ## Core Design
 
@@ -126,7 +129,7 @@ For each detected link type, it should route to a concrete ingestion adapter.
 The routing table in this phase should cover:
 - `podcast -> podcast importer`
 - `xiaohongshu -> xiaohongshu importer`
-- `official -> source/artifact writer path`
+- `official -> reserved official ingestion path with transparent failure until a real fetcher exists`
 
 The routing layer should return structured ingestion results instead of only strings.
 
@@ -164,9 +167,9 @@ This design does not require the CLI to trigger transcript generation.
 
 ### Official path
 
-`link-to-report` should use the existing source/artifact writing helpers to create a normalized official source and full-text artifact.
+`link-to-report` should keep an explicit official-path adapter surface.
 
-If real page extraction is not available for a given link in this phase, the command should fail transparently with a classified failure reason rather than silently fabricating content.
+If real page extraction is not available for a given link in this phase, the command must fail transparently with a classified failure reason rather than silently fabricating content.
 
 ## 4. Bundle Summary As A Real Orchestration Record
 
@@ -276,11 +279,17 @@ The workflow must stop when:
 This upgrade succeeds if the following are true:
 
 1. `ingest-links` creates a real bundle record from mixed links.
-2. Supported links produce real normalized source/artifact records.
+2. Supported real-ingestion links produce real normalized source/artifact records.
 3. `run-summary.md` records real ingestion outputs, not just raw links.
 4. `propose-direction` uses real bundle outputs rather than only generic metadata.
 5. `generate-report` produces a real intake, real review pack, and real writeback through existing report-generation machinery.
 6. The CLI remains human-in-the-loop at the research-direction approval boundary.
+
+For this phase, “supported real-ingestion links” means:
+- `podwise`
+- `xiaohongshu`
+
+`official` remains recognized but may fail explicitly until a real fetch path is added.
 
 ## Non-Goals
 

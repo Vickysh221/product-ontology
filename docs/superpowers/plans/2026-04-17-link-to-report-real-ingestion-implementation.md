@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Upgrade `scripts/link_to_report.py` so the short-term manual-links workflow performs real ingestion for `podwise`, `xiaohongshu`, and `official` inputs, then generates one real review pack and one real writeback through the existing research-direction-first pipeline.
+**Goal:** Upgrade `scripts/link_to_report.py` so the short-term manual-links workflow performs real ingestion for `podwise` and `xiaohongshu`, keeps `official` as an explicit transparent-failure path until a fetcher exists, and generates one real review pack plus one real writeback through the existing research-direction-first pipeline.
 
 **Architecture:** Keep `scripts/link_to_report.py` as a thin CLI and move orchestration into `scripts/link_to_report_lib.py`. Reuse existing podcast, Xiaohongshu, and source/artifact writing helpers to produce real records, then route approved bundle data into the current intake, review-pack, and writeback generation flow instead of emitting placeholder text.
 
@@ -241,7 +241,7 @@ git commit -m "feat: record real link ingestion results"
 
 ---
 
-### Task 2: Wire real podwise, xiaohongshu, and official ingestion adapters
+### Task 2: Wire real podwise and xiaohongshu ingestion adapters, plus a reserved official path
 
 **Files:**
 - Modify: `scripts/link_to_report_lib.py`
@@ -263,7 +263,7 @@ def test_ingestion_adapters_cover_supported_real_ingestion_types():
     assert "web" in lib.INGESTION_ADAPTERS
 ```
 
-- [ ] **Step 2: Write the failing test for official-link ingestion through source/artifact helpers**
+- [ ] **Step 2: Write the failing test for the official-path contract**
 
 Add this test:
 
@@ -833,6 +833,8 @@ python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-f
 Current real-ingestion scope:
 - `podwise`
 - `xiaohongshu`
+
+Reserved but not yet shipped as a success path:
 - `official`
 
 Current behavior:
@@ -921,4 +923,3 @@ If verification required a final touch-up:
 git add README.md scripts/link_to_report.py scripts/link_to_report_lib.py scripts/podcast_import.py scripts/xiaohongshu_redbook_import.py scripts/source_ingest.py scripts/writeback_generate.py tests/test_link_to_report.py tests/test_link_to_report_real_ingestion.py
 git commit -m "chore: finalize link-to-report real ingestion flow"
 ```
-
