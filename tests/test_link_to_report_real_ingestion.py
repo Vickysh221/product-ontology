@@ -233,6 +233,82 @@ def test_propose_direction_uses_bundle_outputs_and_marks_pending(tmp_path):
         monkeypatch.undo()
 
 
+def test_generate_report_uses_reusable_report_builders(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setattr(lib, "ROOT", workspace_root)
+    monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
+    monkeypatch.setattr(lib, "INTAKE_ROOT", workspace_root / "library" / "writeback-intakes" / "link-to-report")
+    monkeypatch.setattr(lib, "REVIEW_PACK_ROOT", workspace_root / "library" / "review-packs" / "link-to-report")
+    monkeypatch.setattr(lib, "WRITEBACK_ROOT", workspace_root / "library" / "writebacks" / "link-to-report")
+    bundle_id = "bundle-report-builders"
+    bundle_dir = lib.bundle_dir(bundle_id)
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    (bundle_dir / "run-summary.md").write_text(
+        "\n".join(
+            [
+                "# Link Bundle Run Summary",
+                "",
+                f"- bundle_id: `{bundle_id}`",
+                "- dry_run: `false`",
+                "- successful_link_count: `1`",
+                "- failed_link_count: `0`",
+                "- source_paths: [`library/sources/podcasts/demo.md`]",
+                "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                "",
+                "## Per-Link Results",
+                "",
+                "### Link Result",
+                "",
+                "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                "- link_type: `podcast`",
+                "- status: `success`",
+                "- source_path: `library/sources/podcasts/demo.md`",
+                "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                "- failure_reason: ``",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (bundle_dir / "direction.md").write_text(
+        "# Research Direction Record\n\n- bundle_id: `bundle-report-builders`\n- research_direction: `bundle-aware direction`\n- direction_status: `user_provided`\n",
+        encoding="utf-8",
+    )
+    calls: dict[str, object] = {}
+
+    def fake_render_review_pack_from_bundle(**kwargs):
+        calls["review_pack"] = kwargs
+        return "review-pack-from-writer"
+
+    def fake_render_writeback_from_bundle(**kwargs):
+        calls["writeback"] = kwargs
+        return "writeback-from-writer"
+
+    monkeypatch.setattr(lib.writeback_generate, "render_review_pack_from_bundle", fake_render_review_pack_from_bundle)
+    monkeypatch.setattr(lib.writeback_generate, "render_writeback_from_bundle", fake_render_writeback_from_bundle)
+
+    result = lib.command_generate_report(
+        argparse.Namespace(
+            bundle_id=bundle_id,
+            direction="bundle-aware direction",
+            direction_file="",
+            review_pack_output="",
+            writeback_output="",
+        )
+    )
+
+    assert result == 0
+    assert calls["review_pack"]["source_paths"] == ["library/sources/podcasts/demo.md"]
+    assert calls["review_pack"]["artifact_paths"] == ["library/artifacts/podcasts/demo/transcript.md"]
+    assert calls["writeback"]["source_paths"] == ["library/sources/podcasts/demo.md"]
+    assert calls["writeback"]["artifact_paths"] == ["library/artifacts/podcasts/demo/transcript.md"]
+    assert (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8") == "review-pack-from-writer"
+    assert (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8") == "writeback-from-writer"
+    assert "MVP 占位" not in (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+    cleanup_bundle_outputs(lib, bundle_id)
+
+
 @pytest.mark.parametrize(
     "bad_result, expected_error",
     [

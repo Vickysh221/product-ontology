@@ -700,6 +700,122 @@ def build_longform_sections(
     }
 
 
+def render_review_pack_from_bundle(
+    bundle_id: str,
+    source_paths: list[str],
+    artifact_paths: list[str],
+    direction_text: str,
+    direction_status: str,
+    links: list[str],
+    link_types: list[str],
+) -> str:
+    theme_lines: list[str] = []
+    for index, link in enumerate(links, start=1):
+        link_type = link_types[index - 1] if index - 1 < len(link_types) else "unknown"
+        source_path = source_paths[index - 1] if index - 1 < len(source_paths) else ""
+        artifact_path = artifact_paths[index - 1] if index - 1 < len(artifact_paths) else ""
+        theme_lines.append(
+            "\n".join(
+                [
+                    f"### Link {index}",
+                    "",
+                    f"- url: `{link}`",
+                    f"- link_type: `{link_type}`",
+                    f"- source_path: `{source_path}`",
+                    f"- artifact_paths: {format_list([artifact_path] if artifact_path else [])}",
+                    f"- paraphrase: {build_review_pack_paraphrase(direction_text, link_type)}",
+                ]
+            )
+        )
+
+    return "\n".join(
+        [
+            "# Research Review Pack",
+            "",
+            f"- bundle_id: `{bundle_id}`",
+            f"- direction_status: `{direction_status}`",
+            f"- research_direction: `{direction_text}`",
+            f"- source_paths: {format_list(source_paths)}",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            f"- link_types: {format_list(link_types)}",
+            "",
+            "## Research Question",
+            "",
+            direction_text,
+            "",
+            "## Review Introduction",
+            "",
+            "这份 review pack 直接引用 bundle 里的真实 source 和 artifact 产物，而不是占位文本。",
+            "",
+            "## Thematic Literature Review",
+            "",
+            "\n\n".join(theme_lines) if theme_lines else "- none recorded",
+            "",
+            "## Counter-Signals And Tensions",
+            "",
+            f"- source_paths: {format_list(source_paths)}",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            "",
+            "## Draft Problem Statement",
+            "",
+            build_final_problem_statement(),
+            "",
+            "## Draft Assumptions",
+            "",
+            build_final_assumptions(),
+            "",
+        ]
+    )
+
+
+def render_writeback_from_bundle(
+    bundle_id: str,
+    source_paths: list[str],
+    artifact_paths: list[str],
+    direction_text: str,
+    direction_status: str,
+    links: list[str],
+    link_types: list[str],
+) -> str:
+    intro = build_writeback_intro(
+        f"本轮 writeback 直接把 bundle 输出当作证据，而不是播客摘要。source_paths: {', '.join(source_paths) or 'none'}; artifact_paths: {', '.join(artifact_paths) or 'none'}.",
+        ["source_paths", "artifact_paths", "link_types"],
+    )
+    return "\n".join(
+        [
+            "# Writeback Proposal",
+            "",
+            f"- writeback_id: `writeback-{bundle_id}`",
+            f"- bundle_id: `{bundle_id}`",
+            f"- direction_status: `{direction_status}`",
+            f"- research_direction: `{build_writeback_research_direction(direction_text, direction_status)}`",
+            f"- source_paths: {format_list(source_paths)}",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            f"- link_types: {format_list(link_types)}",
+            "",
+            "## 主判断",
+            "",
+            build_writeback_problem(
+                "如何把 bundle 的真实 source_paths 和 artifact_paths 收束成一套可持续追踪的研究方向。"
+            ),
+            "",
+            "## 评审视角",
+            "",
+            intro,
+            "",
+            "## 证据锚点",
+            "",
+            f"- source_paths: {format_list(source_paths)}",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            "",
+            "## 保留分歧",
+            "",
+            "- 当前版本优先使用 reusable reporting builders 生成内容，而不是本地占位文本。",
+            "",
+        ]
+    )
+
+
 def render_writeback(args: argparse.Namespace) -> str:
     intake_path = Path(args.intake_file)
     try:

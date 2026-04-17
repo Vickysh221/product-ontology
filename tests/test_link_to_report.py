@@ -425,7 +425,9 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
         assert "https://podcasts.apple.com/us/podcast/example/id123" in review_pack_text
         assert "- research_direction: `link-to-report 最小闭环是否成立`" in review_pack_text
         assert f"- writeback_id: `writeback-{bundle_id}`" in writeback_text
-        assert "- research_direction: `link-to-report 最小闭环是否成立`" in writeback_text
+        assert "link-to-report 最小闭环是否成立" in writeback_text
+        assert "source_paths" in writeback_text
+        assert "artifact_paths" in writeback_text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
 

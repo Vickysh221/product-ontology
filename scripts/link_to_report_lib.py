@@ -46,6 +46,7 @@ def load_script_module(module_filename: str, module_name: str):
 source_ingest = load_script_module("source_ingest.py", "source_ingest")
 podcast_import = load_script_module("podcast_import.py", "podcast_import")
 xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
+writeback_generate = load_script_module("writeback_generate.py", "writeback_generate")
 
 import_episode = podcast_import.import_episode
 write_artifact_record = source_ingest.write_artifact_record
@@ -628,14 +629,32 @@ def command_generate_report(args: argparse.Namespace) -> int:
     link_types = sorted(
         {str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))}
     )
+    source_paths = read_markdown_list_field(summary_text, "source_paths")
+    artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
         print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)
         return 2
 
     intake_text = render_intake_markdown(bundle_id, links, direction_text, direction_status, link_types)
-    review_pack_text = render_review_pack_markdown(bundle_id, direction_text, direction_status, link_types, links)
-    writeback_text = render_writeback_markdown(bundle_id, direction_text, direction_status, link_types)
+    review_pack_text = writeback_generate.render_review_pack_from_bundle(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+    )
+    writeback_text = writeback_generate.render_writeback_from_bundle(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+    )
 
     intake_path = INTAKE_ROOT / f"{bundle_id}.md"
     review_pack_path = REVIEW_PACK_ROOT / f"{bundle_id}.md"
