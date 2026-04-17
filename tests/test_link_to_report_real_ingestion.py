@@ -277,16 +277,16 @@ def test_generate_report_uses_reusable_report_builders(tmp_path, monkeypatch):
     )
     calls: dict[str, object] = {}
 
-    def fake_render_review_pack_from_bundle(**kwargs):
+    def fake_generate_real_review_pack(**kwargs):
         calls["review_pack"] = kwargs
         return "review-pack-from-writer"
 
-    def fake_render_writeback_from_bundle(**kwargs):
+    def fake_generate_real_writeback(**kwargs):
         calls["writeback"] = kwargs
         return "writeback-from-writer"
 
-    monkeypatch.setattr(lib.writeback_generate, "render_review_pack_from_bundle", fake_render_review_pack_from_bundle)
-    monkeypatch.setattr(lib.writeback_generate, "render_writeback_from_bundle", fake_render_writeback_from_bundle)
+    monkeypatch.setattr(lib.writeback_generate, "generate_real_review_pack", fake_generate_real_review_pack)
+    monkeypatch.setattr(lib.writeback_generate, "generate_real_writeback", fake_generate_real_writeback)
 
     result = lib.command_generate_report(
         argparse.Namespace(

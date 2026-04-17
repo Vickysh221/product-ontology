@@ -816,6 +816,48 @@ def render_writeback_from_bundle(
     )
 
 
+def generate_real_review_pack(
+    *,
+    bundle_id: str,
+    source_paths: list[str],
+    artifact_paths: list[str],
+    direction_text: str,
+    direction_status: str,
+    links: list[str],
+    link_types: list[str],
+) -> str:
+    return render_review_pack_from_bundle(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+    )
+
+
+def generate_real_writeback(
+    *,
+    bundle_id: str,
+    source_paths: list[str],
+    artifact_paths: list[str],
+    direction_text: str,
+    direction_status: str,
+    links: list[str],
+    link_types: list[str],
+) -> str:
+    return render_writeback_from_bundle(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+    )
+
+
 def render_writeback(args: argparse.Namespace) -> str:
     intake_path = Path(args.intake_file)
     try:

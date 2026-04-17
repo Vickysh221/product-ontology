@@ -637,7 +637,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     intake_text = render_intake_markdown(bundle_id, links, direction_text, direction_status, link_types)
-    review_pack_text = writeback_generate.render_review_pack_from_bundle(
+    review_pack_text = writeback_generate.generate_real_review_pack(
         bundle_id=bundle_id,
         source_paths=source_paths,
         artifact_paths=artifact_paths,
@@ -646,7 +646,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         links=links,
         link_types=link_types,
     )
-    writeback_text = writeback_generate.render_writeback_from_bundle(
+    writeback_text = writeback_generate.generate_real_writeback(
         bundle_id=bundle_id,
         source_paths=source_paths,
         artifact_paths=artifact_paths,
