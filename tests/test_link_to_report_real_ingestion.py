@@ -54,9 +54,6 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
         "- dry_run: `false`",
         "- successful_link_count: `1`",
         "- failed_link_count: `0`",
-        "- link_count: `1`",
-        "- link_types: [`podcast`]",
-        "- links: [`https://podcasts.apple.com/us/podcast/example/id123`]",
         "- source_paths: [`library/sources/podcasts/demo.md`]",
         "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
         "## Per-Link Results",
@@ -67,4 +64,12 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     ]
     for line in expected_lines:
         assert line in text
-    assert "## Link Results" not in text
+    for line in [
+        "- link_count:",
+        "- link_types:",
+        "- links:",
+        "- successful_links:",
+        "- failed_links:",
+        "## Link Results",
+    ]:
+        assert line not in text

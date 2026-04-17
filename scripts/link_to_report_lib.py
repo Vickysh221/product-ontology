@@ -131,12 +131,6 @@ def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] 
     ]
     successful_results = [result for result in normalized_results if str(result.get("status", "")) == "success"]
     failed_results = [result for result in normalized_results if str(result.get("status", "")) != "success"]
-    link_types = sorted(
-        {str(result.get("link_type", detect_link_type(str(result.get("link", ""))))) for result in normalized_results}
-    )
-    all_links = [str(result.get("link", "")) for result in normalized_results]
-    successful_links = [str(result.get("link", "")) for result in successful_results]
-    failed_links = [str(result.get("link", "")) for result in failed_results]
     source_paths = [str(result.get("source_path", "")) for result in successful_results if str(result.get("source_path", ""))]
     artifact_paths = [
         str(path)
@@ -151,13 +145,8 @@ def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] 
         f"- dry_run: `{'true' if dry_run else 'false'}`",
         f"- successful_link_count: `{len(successful_results)}`",
         f"- failed_link_count: `{len(failed_results)}`",
-        f"- link_count: `{len(normalized_results)}`",
-        f"- link_types: {format_list(link_types)}",
-        f"- links: {format_list(all_links)}",
         f"- source_paths: {format_list(source_paths)}",
         f"- artifact_paths: {format_list(artifact_paths)}",
-        f"- successful_links: {format_list(successful_links)}",
-        f"- failed_links: {format_list(failed_links)}",
         "",
         "## Per-Link Results",
         "",
