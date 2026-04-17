@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import hashlib
 import re
 import sys
@@ -20,6 +21,37 @@ LINK_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("podcast", ("podcast", "spotify.com", "podcasts.apple.com", "apple.com/podcast")),
     ("video", ("youtube.com", "bilibili.com", "tiktok.com", "douyin.com")),
 )
+INGESTION_ADAPTERS: dict[str, callable] = {}
+
+
+def load_script_module(module_filename: str, module_name: str):
+    module_path = Path(__file__).resolve().parent / module_filename
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"unable to load {module_name} from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    previous_module = sys.modules.get(module_name)
+    try:
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+    except Exception:
+        if previous_module is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous_module
+        raise
+    return module
+
+
+source_ingest = load_script_module("source_ingest.py", "source_ingest")
+podcast_import = load_script_module("podcast_import.py", "podcast_import")
+xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
+writeback_generate = load_script_module("writeback_generate.py", "writeback_generate")
+
+import_episode = podcast_import.import_episode
+write_artifact_record = source_ingest.write_artifact_record
+write_source_record = source_ingest.write_source_record
+import_note_url = xiaohongshu_redbook_import.import_note_url
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -84,22 +116,305 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
         inner = line[len(prefix) : -1].strip()
         if not inner:
             return []
-        return [item.strip().strip("`") for item in inner.split(",") if item.strip()]
+        return re.findall(r"`([^`]*)`", inner)
     return []
 
 
-def render_run_summary_markdown(bundle_id: str, links: list[str], dry_run: bool) -> str:
-    link_types = sorted({detect_link_type(link) for link in links})
+def summarize_bundle_cues(link_results: list[dict[str, object]]) -> tuple[list[str], list[str]]:
+    link_types: list[str] = []
+    artifact_kinds: list[str] = []
+    for result in link_results:
+        link_type = str(result.get("link_type", "")).strip()
+        if link_type and link_type not in link_types:
+            link_types.append(link_type)
+        for artifact_path in result.get("artifact_paths", []) or []:
+            kind = Path(str(artifact_path)).stem.strip()
+            if kind and kind not in artifact_kinds:
+                artifact_kinds.append(kind)
+    return link_types, artifact_kinds
+
+
+def build_proposed_direction_from_bundle_outputs(link_results: list[dict[str, object]]) -> str:
+    link_types, artifact_kinds = summarize_bundle_cues(link_results)
+    if link_types or artifact_kinds:
+        link_type_hint = "、".join(link_types) if link_types else "多种来源"
+        artifact_hint = "、".join(artifact_kinds) if artifact_kinds else "可见证据"
+        return (
+            f"当前 bundle 主要包含 {link_type_hint} 材料，且可见证据类型包括 {artifact_hint}。"
+            "这些线索是否共同指向协作边界、责任边界或工作流结构的变化？"
+        )
+    return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+
+
+def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
+    blocks: list[list[str]] = []
+    current_block: list[str] = []
+    in_section = False
+
+    for line in text.splitlines():
+        if line == "## Per-Link Results":
+            in_section = True
+            current_block = []
+            continue
+        if not in_section:
+            continue
+        if line.startswith("## ") and line != "## Per-Link Results":
+            if any(item.strip() for item in current_block):
+                blocks.append(current_block)
+            current_block = []
+            break
+        if line.startswith("### Link Result"):
+            if any(item.strip() for item in current_block):
+                blocks.append(current_block)
+                current_block = []
+            continue
+        current_block.append(line)
+
+    if in_section and any(item.strip() for item in current_block):
+        blocks.append(current_block)
+
+    results: list[dict[str, object]] = []
+    for block_lines in blocks:
+        block_text = "\n".join(block_lines)
+        results.append(
+            {
+                "link": read_markdown_field(block_text, "link"),
+                "link_type": read_markdown_field(block_text, "link_type"),
+                "status": read_markdown_field(block_text, "status"),
+                "source_path": read_markdown_field(block_text, "source_path"),
+                "artifact_paths": read_markdown_list_field(block_text, "artifact_paths"),
+                "failure_reason": read_markdown_field(block_text, "failure_reason"),
+            }
+        )
+    return results
+
+
+def load_official_target_urls() -> list[str]:
+    official_sources_file = ROOT / "seed" / "official-sources.yaml"
+    if not official_sources_file.exists():
+        return []
+    targets: list[str] = []
+    for line in official_sources_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("url: "):
+            continue
+        target = stripped.split("url:", 1)[1].strip()
+        if target and not target.startswith("manual://"):
+            targets.append(target)
+    return targets
+
+
+def is_official_target(link: str) -> bool:
+    normalized = link.strip().rstrip("/")
+    for target in load_official_target_urls():
+        target_normalized = target.strip().rstrip("/")
+        if normalized == target_normalized or normalized.startswith(f"{target_normalized}/"):
+            return True
+    return False
+
+
+def to_repo_relative(path: Path) -> str:
+    return str(path.relative_to(ROOT))
+
+
+def validate_ingestion_adapter_result(result: object, link: str, link_type: str) -> dict[str, object]:
+    if not isinstance(result, dict):
+        raise TypeError("ingestion adapter must return a dict result")
+
+    status = result.get("status", "success")
+    if status not in {"success", "dry_run", "failed"}:
+        raise ValueError(f"ingestion adapter returned unsupported status: {status!r}")
+
+    source_path = result.get("source_path", "")
+    if not isinstance(source_path, str):
+        raise TypeError("ingestion adapter source_path must be a string")
+
+    failure_reason = result.get("failure_reason", "")
+    if not isinstance(failure_reason, str):
+        raise TypeError("ingestion adapter failure_reason must be a string")
+
+    artifact_paths = result.get("artifact_paths", [])
+    if not isinstance(artifact_paths, list) or any(not isinstance(path, str) for path in artifact_paths):
+        raise TypeError("ingestion adapter artifact_paths must be a list of strings")
+
+    return {
+        "link": str(result.get("link", link)),
+        "link_type": str(result.get("link_type", link_type)),
+        "status": str(status),
+        "source_path": source_path,
+        "artifact_paths": artifact_paths,
+        "failure_reason": failure_reason,
+    }
+
+
+def invoke_ingestion_adapter(adapter: object, link: str, force: bool, link_type: str) -> dict[str, object]:
+    if not callable(adapter):
+        raise TypeError("ingestion adapter must be callable")
+    result = adapter(link, force=force)
+    return validate_ingestion_adapter_result(result, link, link_type)
+
+
+def ingest_podcast_link(link: str, *, force: bool) -> dict[str, object]:
+    slug = import_episode(link, force=force)
+    source_path = ROOT / "library" / "sources" / "podcasts" / f"{slug}.md"
+    artifact_root = ROOT / "library" / "artifacts" / "podcasts" / slug
+    return {
+        "link": link,
+        "link_type": "podcast",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": [
+            to_repo_relative(artifact_root / "transcript.md"),
+            to_repo_relative(artifact_root / "summary.md"),
+            to_repo_relative(artifact_root / "highlights.md"),
+        ],
+        "failure_reason": "",
+    }
+
+
+def ingest_xiaohongshu_link(link: str, *, force: bool) -> dict[str, object]:
+    slug = import_note_url(link, force=force)
+    source_path = ROOT / "library" / "sources" / "xiaohongshu" / f"{slug}.md"
+    artifact_root = ROOT / "library" / "artifacts" / "xiaohongshu" / slug
+    artifact_paths = [to_repo_relative(artifact_root / "full_text.md")]
+    for optional_name in ("transcript.md", "comment_batch.md"):
+        optional_path = artifact_root / optional_name
+        if optional_path.exists():
+            artifact_paths.append(to_repo_relative(optional_path))
+    return {
+        "link": link,
+        "link_type": "xiaohongshu",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": artifact_paths,
+        "failure_reason": "",
+    }
+
+
+def fetch_official_content(link: str) -> str | None:
+    return None
+
+
+def ingest_official_link(link: str, *, force: bool) -> dict[str, object]:
+    if not is_official_target(link):
+        raise ValueError("non-official web url is unsupported in this phase")
+    body = fetch_official_content(link)
+    if not body or not body.strip():
+        raise ValueError("official content fetch unavailable in this phase")
+
+    _source_id, source_path, _artifact_dir = write_source_record(
+        channel="official",
+        source_label=link,
+        url=link,
+        source_type="official_release",
+        ingestion_method="link_to_report",
+        publisher=urlparse(link).netloc or "unknown",
+        author_or_speaker="unknown",
+        published_at="unknown",
+        title=link,
+        canonical_url=link,
+        perspective="first_hand_official",
+        confidence="high",
+        notes=["Official page imported through link-to-report."],
+    )
+    artifact_path = write_artifact_record(
+        channel="official",
+        source_label=link,
+        source_url=link,
+        slice_type="full_text",
+        location="full_text",
+        perspective="official_release",
+        why_relevant="Stores the official page content for later extraction.",
+        body=body,
+    )
+    return {
+        "link": link,
+        "link_type": "web",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": [to_repo_relative(artifact_path)],
+        "failure_reason": "",
+    }
+
+
+INGESTION_ADAPTERS = {
+    "podcast": ingest_podcast_link,
+    "xiaohongshu": ingest_xiaohongshu_link,
+    "web": ingest_official_link,
+}
+
+
+def render_link_result_block(result: dict[str, object] | str) -> str:
+    if isinstance(result, str):
+        result = {
+            "link": result,
+            "link_type": detect_link_type(result),
+            "status": "success",
+            "source_path": "",
+            "artifact_paths": [],
+            "failure_reason": "",
+        }
+
+    artifact_paths = [str(path) for path in result.get("artifact_paths", []) or []]
+    source_path = str(result.get("source_path", ""))
+    failure_reason = str(result.get("failure_reason", ""))
+    return "\n".join(
+        [
+            f"- link: `{str(result.get('link', ''))}`",
+            f"- link_type: `{str(result.get('link_type', 'unknown'))}`",
+            f"- status: `{str(result.get('status', 'failed'))}`",
+            f"- source_path: `{source_path}`",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            f"- failure_reason: `{failure_reason}`",
+        ]
+    )
+
+
+def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] | str], dry_run: bool) -> str:
+    normalized_results = [
+        result
+        if isinstance(result, dict)
+        else {
+            "link": result,
+            "link_type": detect_link_type(result),
+            "status": "success",
+            "source_path": "",
+            "artifact_paths": [],
+            "failure_reason": "",
+        }
+        for result in results
+    ]
+    successful_results = [result for result in normalized_results if str(result.get("status", "")) == "success"]
+    failed_results = [result for result in normalized_results if str(result.get("status", "")) != "success"]
+    source_paths = [str(result.get("source_path", "")) for result in successful_results if str(result.get("source_path", ""))]
+    artifact_paths = [
+        str(path)
+        for result in successful_results
+        for path in (result.get("artifact_paths", []) or [])
+        if str(path)
+    ]
     lines = [
         "# Link Bundle Run Summary",
         "",
         f"- bundle_id: `{bundle_id}`",
         f"- dry_run: `{'true' if dry_run else 'false'}`",
-        f"- link_count: `{len(links)}`",
-        f"- link_types: {format_list(link_types)}",
-        f"- links: {format_list(links)}",
+        f"- successful_link_count: `{len(successful_results)}`",
+        f"- failed_link_count: `{len(failed_results)}`",
+        f"- source_paths: {format_list(source_paths)}",
+        f"- artifact_paths: {format_list(artifact_paths)}",
+        "",
+        "## Per-Link Results",
         "",
     ]
+    for index, result in enumerate(normalized_results, start=1):
+        lines.extend(
+            [
+                "### Link Result",
+                "",
+                render_link_result_block(result),
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -218,9 +533,56 @@ def command_ingest_links(args: argparse.Namespace) -> int:
         return 2
 
     bundle_id = slugify_bundle_id(args.bundle_id) if args.bundle_id else derive_bundle_id(links, "")
+    results: list[dict[str, object]] = []
+    for link in links:
+        link_type = detect_link_type(link)
+        if args.dry_run:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "dry_run",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": "",
+                }
+            )
+            continue
+
+        adapter = INGESTION_ADAPTERS.get(link_type)
+        if adapter is None:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "failed",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": f"unsupported link type: {link_type}",
+                }
+            )
+            continue
+
+        try:
+            adapter_result = invoke_ingestion_adapter(adapter, link, args.force, link_type)
+        except Exception as exc:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "failed",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": f"{exc}",
+                }
+            )
+            continue
+
+        results.append(adapter_result)
+
     summary_path = run_summary_path(bundle_id)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
-    summary_path.write_text(render_run_summary_markdown(bundle_id, links, args.dry_run), encoding="utf-8")
+    summary_path.write_text(render_run_summary_markdown(bundle_id, results, args.dry_run), encoding="utf-8")
     print(summary_path.relative_to(ROOT))
     return 0
 
@@ -231,12 +593,16 @@ def command_propose_direction(args: argparse.Namespace) -> int:
     if not summary_path.exists():
         print("bundle run summary is missing", file=sys.stderr)
         return 2
+    summary_text = summary_path.read_text(encoding="utf-8")
 
     if args.direction:
         research_direction = args.direction.strip()
         direction_status = "user_provided"
     else:
-        research_direction = "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+        link_results = [
+            result for result in parse_link_result_blocks(summary_text) if str(result.get("status", "")) == "success"
+        ]
+        research_direction = build_proposed_direction_from_bundle_outputs(link_results)
         direction_status = "system_suggested_pending"
 
     path = direction_path(bundle_id)
@@ -279,16 +645,38 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     summary_text = summary_path.read_text(encoding="utf-8")
-    links = read_markdown_list_field(summary_text, "links")
-    link_types = read_markdown_list_field(summary_text, "link_types")
+    link_results = parse_link_result_blocks(summary_text)
+    successful_results = [result for result in link_results if str(result.get("status", "")) == "success"]
+    links = [str(result.get("link", "")) for result in successful_results if str(result.get("link", ""))]
+    link_types = sorted({str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))})
+    source_paths = read_markdown_list_field(summary_text, "source_paths")
+    artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
         print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)
         return 2
 
     intake_text = render_intake_markdown(bundle_id, links, direction_text, direction_status, link_types)
-    review_pack_text = render_review_pack_markdown(bundle_id, direction_text, direction_status, link_types, links)
-    writeback_text = render_writeback_markdown(bundle_id, direction_text, direction_status, link_types)
+    review_pack_text = writeback_generate.generate_real_review_pack(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+        link_results=successful_results,
+    )
+    writeback_text = writeback_generate.generate_real_writeback(
+        bundle_id=bundle_id,
+        source_paths=source_paths,
+        artifact_paths=artifact_paths,
+        direction_text=direction_text,
+        direction_status=direction_status,
+        links=links,
+        link_types=link_types,
+        link_results=successful_results,
+    )
 
     intake_path = INTAKE_ROOT / f"{bundle_id}.md"
     review_pack_path = REVIEW_PACK_ROOT / f"{bundle_id}.md"

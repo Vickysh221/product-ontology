@@ -190,22 +190,28 @@ This repository now includes a short-term `link-to-report` CLI for the manual-li
 ```bash
 python3 scripts/link_to_report.py ingest-links <url1> <url2> ... --bundle-id demo --dry-run
 python3 scripts/link_to_report.py propose-direction --bundle-id demo
-python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-file library/sessions/link-to-report/demo/direction.md
+python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-file library/sessions/link-to-report/demo/direction.md  # after approving/editing the generated direction.md
 ```
 
 Current behavior:
 - `ingest-links` creates a bundle-scoped run summary under `library/sessions/link-to-report/<bundle-id>/run-summary.md`.
+- `ingest-links` now resolves real ingestion adapters for `podwise` and `xiaohongshu` URLs.
+- `podwise` URLs import transcript, summary, and highlights artifacts.
+- `xiaohongshu` URLs import note text and can opt into comments when the adapter asks for them.
+- `official` URLs are recognized only as an explicit reserved path in this phase.
+- If an `official` URL matches an approved target in `seed/official-sources.yaml` but no real page-content fetcher is available, the CLI fails transparently instead of fabricating content.
 - `propose-direction` records one research direction at `library/sessions/link-to-report/<bundle-id>/direction.md`.
 - `generate-report` blocks if the direction is still `system_suggested_pending`.
-- Once the direction is approved or user-provided, the CLI writes:
+- After you approve or edit the generated `direction.md`, the CLI writes:
   - `library/writeback-intakes/link-to-report/<bundle-id>.md`
   - `library/review-packs/link-to-report/<bundle-id>.md`
   - `library/writebacks/link-to-report/<bundle-id>.md`
 
 Current scope:
 - This is the short-term manual-links path only.
-- The current MVP proves the end-to-end chain and field contract.
-- It does not yet perform real cross-platform full-text ingestion or direction ranking from raw content.
+- The current MVP proves the end-to-end chain and field contract with real ingestion adapters for podcast and Xiaohongshu inputs.
+- `official` is kept as a reserved adapter surface with explicit failure behavior, not as a shipped real-ingestion success path.
+- It still does not rank directions from raw content or support unsupported generic web URLs.
 
 ## Source Architecture
 

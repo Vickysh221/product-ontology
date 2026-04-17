@@ -209,7 +209,7 @@ def render_artifact_markdown(
 def import_episode(source_url: str, *, force: bool = False) -> str:
     record = build_episode_record(source_url)
     if record.source_path.exists() and not force:
-        return f"skip {source_url} -> {record.slug} (already imported)"
+        return record.slug
 
     imported_at = utc_now()
     SOURCES_DIR.mkdir(parents=True, exist_ok=True)
@@ -251,7 +251,7 @@ def import_episode(source_url: str, *, force: bool = False) -> str:
         ),
         encoding="utf-8",
     )
-    return f"import {source_url} -> {record.slug}"
+    return record.slug
 
 
 def parse_args() -> argparse.Namespace:
