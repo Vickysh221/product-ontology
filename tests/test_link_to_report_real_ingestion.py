@@ -57,19 +57,13 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
         "- source_paths: [`library/sources/podcasts/demo.md`]",
         "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
         "## Per-Link Results",
-        "### Link Result 1",
+        "### Link Result",
         "- source_path: `library/sources/podcasts/demo.md`",
         "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
         "- failure_reason: ``",
     ]
     for line in expected_lines:
         assert line in text
-    for line in [
-        "- link_count:",
-        "- link_types:",
-        "- links:",
-        "- successful_links:",
-        "- failed_links:",
-        "## Link Results",
-    ]:
+    assert "### Link Result 1" not in text
+    for line in ["- link_count:", "- link_types:", "- links:", "- successful_links:", "- failed_links:", "## Link Results"]:
         assert line not in text

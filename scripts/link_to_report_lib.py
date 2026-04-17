@@ -89,6 +89,48 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
     return []
 
 
+def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
+    blocks: list[list[str]] = []
+    current_block: list[str] = []
+    in_section = False
+
+    for line in text.splitlines():
+        if line == "## Per-Link Results":
+            in_section = True
+            current_block = []
+            continue
+        if not in_section:
+            continue
+        if line.startswith("## ") and line != "## Per-Link Results":
+            if any(item.strip() for item in current_block):
+                blocks.append(current_block)
+            break
+        if line.startswith("### Link Result"):
+            if any(item.strip() for item in current_block):
+                blocks.append(current_block)
+                current_block = []
+            continue
+        current_block.append(line)
+
+    if in_section and any(item.strip() for item in current_block):
+        blocks.append(current_block)
+
+    results: list[dict[str, object]] = []
+    for block_lines in blocks:
+        block_text = "\n".join(block_lines)
+        results.append(
+            {
+                "link": read_markdown_field(block_text, "link"),
+                "link_type": read_markdown_field(block_text, "link_type"),
+                "status": read_markdown_field(block_text, "status"),
+                "source_path": read_markdown_field(block_text, "source_path"),
+                "artifact_paths": read_markdown_list_field(block_text, "artifact_paths"),
+                "failure_reason": read_markdown_field(block_text, "failure_reason"),
+            }
+        )
+    return results
+
+
 def render_link_result_block(result: dict[str, object] | str) -> str:
     if isinstance(result, str):
         result = {
@@ -154,7 +196,7 @@ def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] 
     for index, result in enumerate(normalized_results, start=1):
         lines.extend(
             [
-                f"### Link Result {index}",
+                "### Link Result",
                 "",
                 render_link_result_block(result),
                 "",
@@ -394,10 +436,11 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     summary_text = summary_path.read_text(encoding="utf-8")
-    # Task 1 summaries only guarantee the ingestion result contract, so later
-    # report generation must tolerate missing link aggregation fields.
-    links = read_markdown_list_field(summary_text, "links") or []
-    link_types = read_markdown_list_field(summary_text, "link_types") or []
+    link_results = parse_link_result_blocks(summary_text)
+    links = [str(result.get("link", "")) for result in link_results if str(result.get("link", ""))]
+    link_types = sorted(
+        {str(result.get("link_type", "")) for result in link_results if str(result.get("link_type", ""))}
+    )
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
         print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)

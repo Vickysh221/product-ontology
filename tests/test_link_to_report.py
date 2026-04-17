@@ -238,7 +238,7 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
                     "",
                     "## Per-Link Results",
                     "",
-                    "### Link Result 1",
+                    "### Link Result",
                     "",
                     "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
                     "- link_type: `podcast`",
@@ -266,9 +266,14 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
             text=True,
         )
         assert result.returncode == 0, result.stderr
-        assert (lib.INTAKE_ROOT / f"{bundle_id}.md").exists()
-        assert (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").exists()
-        assert (lib.WRITEBACK_ROOT / f"{bundle_id}.md").exists()
+        intake_text = (lib.INTAKE_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        review_pack_text = (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
+        assert "- link_count: `1`" in intake_text
+        assert "- link_types: [`podcast`]" in intake_text
+        assert "https://podcasts.apple.com/us/podcast/example/id123" in review_pack_text
+        assert "- link_types: [`podcast`]" in review_pack_text
+        assert "- link_types: [`podcast`]" in writeback_text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
 
@@ -291,9 +296,26 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
                     "",
                     f"- bundle_id: `{bundle_id}`",
                     "- dry_run: `true`",
-                    "- link_count: `2`",
-                    "- link_types: [`podcast`, `xiaohongshu`]",
-                    f"- links: {lib.format_list(links)}",
+                    "",
+                    "## Per-Link Results",
+                    "",
+                    "### Link Result",
+                    "",
+                    f"- link: `{links[0]}`",
+                    "- link_type: `xiaohongshu`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/xiaohongshu/demo.md`",
+                    "- artifact_paths: [`library/artifacts/xiaohongshu/demo/full_text.md`]",
+                    "- failure_reason: ``",
+                    "",
+                    "### Link Result",
+                    "",
+                    f"- link: `{links[1]}`",
+                    "- link_type: `podcast`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/podcasts/demo.md`",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                    "- failure_reason: ``",
                     "",
                 ]
             ),
@@ -341,8 +363,11 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
         writeback_text = writeback_path.read_text(encoding="utf-8")
         assert f"- intake_id: `intake-{bundle_id}`" in intake_text
         assert f"- bundle_id: `{bundle_id}`" in intake_text
+        assert f"- link_count: `2`" in intake_text
+        assert "- link_types: [`podcast`, `xiaohongshu`]" in intake_text
         assert "- direction_status: `user_provided`" in intake_text
         assert f"- bundle_id: `{bundle_id}`" in review_pack_text
+        assert "https://podcasts.apple.com/us/podcast/example/id123" in review_pack_text
         assert "- research_direction: `link-to-report 最小闭环是否成立`" in review_pack_text
         assert f"- writeback_id: `writeback-{bundle_id}`" in writeback_text
         assert "- research_direction: `link-to-report 最小闭环是否成立`" in writeback_text
