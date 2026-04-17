@@ -50,17 +50,17 @@ def test_import_note_url_returns_slug(tmp_path, monkeypatch):
     monkeypatch.setattr(xhs_import, "pull_with_redbook", fake_pull_with_redbook)
 
     slug = xhs_import.import_note_url("https://www.xiaohongshu.com/explore/123", force=True)
-    slug_with_comments_disabled = xhs_import.import_note_url(
+    slug_with_comments_enabled = xhs_import.import_note_url(
         "https://www.xiaohongshu.com/explore/123",
         force=True,
-        include_comments=False,
+        include_comments=True,
     )
 
     assert isinstance(slug, str)
     assert slug
-    assert isinstance(slug_with_comments_disabled, str)
-    assert slug_with_comments_disabled
-    assert include_comments_values == [True, False]
+    assert isinstance(slug_with_comments_enabled, str)
+    assert slug_with_comments_enabled
+    assert include_comments_values == [False, True]
 
 
 def test_run_summary_records_real_link_results(tmp_path, monkeypatch):

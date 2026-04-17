@@ -96,7 +96,7 @@ def import_note(args: argparse.Namespace) -> int:
     return 0
 
 
-def import_note_url(note_url: str, *, force: bool = False, include_comments: bool = True) -> str:
+def import_note_url(note_url: str, *, force: bool = False, include_comments: bool = False) -> str:
     slug = canonical_slug_from_url(note_url)
     source_path = ROOT / "library" / "sources" / "xiaohongshu" / f"{slug}.md"
     if source_path.exists() and not force:
