@@ -708,12 +708,26 @@ def render_review_pack_from_bundle(
     direction_status: str,
     links: list[str],
     link_types: list[str],
+    link_results: list[dict[str, object]] | None = None,
 ) -> str:
     theme_lines: list[str] = []
-    for index, link in enumerate(links, start=1):
-        link_type = link_types[index - 1] if index - 1 < len(link_types) else "unknown"
-        source_path = source_paths[index - 1] if index - 1 < len(source_paths) else ""
-        artifact_path = artifact_paths[index - 1] if index - 1 < len(artifact_paths) else ""
+    lineage = link_results or []
+    if not lineage:
+        lineage = []
+        for index, link in enumerate(links):
+            lineage.append(
+                {
+                    "link": link,
+                    "link_type": link_types[index] if index < len(link_types) else "unknown",
+                    "source_path": source_paths[index] if index < len(source_paths) else "",
+                    "artifact_paths": [artifact_paths[index]] if index < len(artifact_paths) else [],
+                }
+            )
+    for index, result in enumerate(lineage, start=1):
+        link = str(result.get("link", ""))
+        link_type = str(result.get("link_type", "unknown"))
+        source_path = str(result.get("source_path", ""))
+        per_link_artifacts = [str(path) for path in result.get("artifact_paths", []) or []]
         theme_lines.append(
             "\n".join(
                 [
@@ -722,7 +736,7 @@ def render_review_pack_from_bundle(
                     f"- url: `{link}`",
                     f"- link_type: `{link_type}`",
                     f"- source_path: `{source_path}`",
-                    f"- artifact_paths: {format_list([artifact_path] if artifact_path else [])}",
+                    f"- artifact_paths: {format_list(per_link_artifacts)}",
                     f"- paraphrase: {build_review_pack_paraphrase(direction_text, link_type)}",
                 ]
             )
@@ -776,7 +790,16 @@ def render_writeback_from_bundle(
     direction_status: str,
     links: list[str],
     link_types: list[str],
+    link_results: list[dict[str, object]] | None = None,
 ) -> str:
+    lineage = link_results or []
+    lineage_lines = ["- none recorded"]
+    if lineage:
+        lineage_lines = []
+        for result in lineage:
+            lineage_lines.append(
+                f"- {result.get('link_type', 'unknown')}: {result.get('source_path', '')} -> {format_list([str(path) for path in result.get('artifact_paths', []) or []])}"
+            )
     intro = build_writeback_intro(
         f"本轮 writeback 直接把 bundle 输出当作证据，而不是播客摘要。source_paths: {', '.join(source_paths) or 'none'}; artifact_paths: {', '.join(artifact_paths) or 'none'}.",
         ["source_paths", "artifact_paths", "link_types"],
@@ -805,8 +828,7 @@ def render_writeback_from_bundle(
             "",
             "## 证据锚点",
             "",
-            f"- source_paths: {format_list(source_paths)}",
-            f"- artifact_paths: {format_list(artifact_paths)}",
+            *lineage_lines,
             "",
             "## 保留分歧",
             "",
@@ -825,6 +847,7 @@ def generate_real_review_pack(
     direction_status: str,
     links: list[str],
     link_types: list[str],
+    link_results: list[dict[str, object]] | None = None,
 ) -> str:
     return render_review_pack_from_bundle(
         bundle_id=bundle_id,
@@ -834,6 +857,7 @@ def generate_real_review_pack(
         direction_status=direction_status,
         links=links,
         link_types=link_types,
+        link_results=link_results,
     )
 
 
@@ -846,6 +870,7 @@ def generate_real_writeback(
     direction_status: str,
     links: list[str],
     link_types: list[str],
+    link_results: list[dict[str, object]] | None = None,
 ) -> str:
     return render_writeback_from_bundle(
         bundle_id=bundle_id,
@@ -855,6 +880,7 @@ def generate_real_writeback(
         direction_status=direction_status,
         links=links,
         link_types=link_types,
+        link_results=link_results,
     )
 
 

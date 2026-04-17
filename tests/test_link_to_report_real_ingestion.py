@@ -139,10 +139,21 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
         assert line not in text
 
 
-def test_official_ingest_returns_source_and_artifact_paths(tmp_path, monkeypatch):
+def test_official_ingest_fails_without_fetchable_content(tmp_path, monkeypatch):
     lib = load_link_to_report_lib_module()
     monkeypatch.setattr(lib, "ROOT", tmp_path)
     monkeypatch.setattr(lib, "load_official_target_urls", lambda: ["https://openai.com/news/"])
+    monkeypatch.setattr(lib, "fetch_official_content", lambda link: None)
+
+    with pytest.raises(ValueError, match="official content fetch unavailable"):
+        lib.ingest_official_link("https://openai.com/news/", force=False)
+
+
+def test_official_ingest_returns_source_and_artifact_paths_when_content_available(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    monkeypatch.setattr(lib, "ROOT", tmp_path)
+    monkeypatch.setattr(lib, "load_official_target_urls", lambda: ["https://openai.com/news/"])
+    monkeypatch.setattr(lib, "fetch_official_content", lambda link: "real official page body")
 
     def fake_write_source_record(**kwargs):
         path = tmp_path / "library" / "sources" / "official" / "demo.md"
@@ -226,8 +237,9 @@ def test_propose_direction_uses_bundle_outputs_and_marks_pending(tmp_path):
         assert result == 0
         text = (bundle_dir / "direction.md").read_text(encoding="utf-8")
         assert "- direction_status: `system_suggested_pending`" in text
-        assert "library/sources/podcasts/demo.md" in text
-        assert "library/artifacts/podcasts/demo/transcript.md" in text
+        assert "podcast" in text
+        assert "transcript" in text
+        assert "library/sources/podcasts/demo.md" not in text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
         monkeypatch.undo()
@@ -309,6 +321,90 @@ def test_generate_report_uses_reusable_report_builders(tmp_path, monkeypatch):
     cleanup_bundle_outputs(lib, bundle_id)
 
 
+def test_generate_report_preserves_per_link_lineage_for_reusable_builders(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setattr(lib, "ROOT", workspace_root)
+    monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
+    monkeypatch.setattr(lib, "INTAKE_ROOT", workspace_root / "library" / "writeback-intakes" / "link-to-report")
+    monkeypatch.setattr(lib, "REVIEW_PACK_ROOT", workspace_root / "library" / "review-packs" / "link-to-report")
+    monkeypatch.setattr(lib, "WRITEBACK_ROOT", workspace_root / "library" / "writebacks" / "link-to-report")
+    bundle_id = "bundle-lineage"
+    bundle_dir = lib.bundle_dir(bundle_id)
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    (bundle_dir / "run-summary.md").write_text(
+        "\n".join(
+            [
+                "# Link Bundle Run Summary",
+                "",
+                f"- bundle_id: `{bundle_id}`",
+                "- dry_run: `false`",
+                "- successful_link_count: `2`",
+                "- failed_link_count: `0`",
+                "- source_paths: [`library/sources/xiaohongshu/xhs.md`, `library/sources/podcasts/pod.md`]",
+                "- artifact_paths: [`library/artifacts/xiaohongshu/xhs/full_text.md`, `library/artifacts/xiaohongshu/xhs/comment_batch.md`, `library/artifacts/podcasts/pod/transcript.md`]",
+                "",
+                "## Per-Link Results",
+                "",
+                "### Link Result",
+                "",
+                "- link: `https://www.xiaohongshu.com/explore/123`",
+                "- link_type: `xiaohongshu`",
+                "- status: `success`",
+                "- source_path: `library/sources/xiaohongshu/xhs.md`",
+                "- artifact_paths: [`library/artifacts/xiaohongshu/xhs/full_text.md`, `library/artifacts/xiaohongshu/xhs/comment_batch.md`]",
+                "- failure_reason: ``",
+                "",
+                "### Link Result",
+                "",
+                "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                "- link_type: `podcast`",
+                "- status: `success`",
+                "- source_path: `library/sources/podcasts/pod.md`",
+                "- artifact_paths: [`library/artifacts/podcasts/pod/transcript.md`]",
+                "- failure_reason: ``",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    calls: dict[str, object] = {}
+
+    def fake_generate_real_review_pack(**kwargs):
+        calls["review_pack"] = kwargs
+        return "review-pack-from-writer"
+
+    def fake_generate_real_writeback(**kwargs):
+        calls["writeback"] = kwargs
+        return "writeback-from-writer"
+
+    monkeypatch.setattr(lib.writeback_generate, "generate_real_review_pack", fake_generate_real_review_pack)
+    monkeypatch.setattr(lib.writeback_generate, "generate_real_writeback", fake_generate_real_writeback)
+
+    result = lib.command_generate_report(
+        argparse.Namespace(
+            bundle_id=bundle_id,
+            direction="bundle-aware direction",
+            direction_file="",
+            review_pack_output="",
+            writeback_output="",
+        )
+    )
+
+    assert result == 0
+    review_lineage = calls["review_pack"]["link_results"]
+    writeback_lineage = calls["writeback"]["link_results"]
+    assert review_lineage[0]["link_type"] == "xiaohongshu"
+    assert review_lineage[0]["artifact_paths"] == [
+        "library/artifacts/xiaohongshu/xhs/full_text.md",
+        "library/artifacts/xiaohongshu/xhs/comment_batch.md",
+    ]
+    assert review_lineage[1]["link_type"] == "podcast"
+    assert review_lineage[1]["artifact_paths"] == ["library/artifacts/podcasts/pod/transcript.md"]
+    assert writeback_lineage == review_lineage
+    cleanup_bundle_outputs(lib, bundle_id)
+
+
 def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
     lib = load_link_to_report_lib_module()
     workspace_root = tmp_path / "workspace"
@@ -321,6 +417,7 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
     monkeypatch.setattr(lib.source_ingest, "ROOT", workspace_root)
     monkeypatch.setattr(lib.source_ingest, "SOURCES_ROOT", workspace_root / "library" / "sources")
     monkeypatch.setattr(lib.source_ingest, "ARTIFACTS_ROOT", workspace_root / "library" / "artifacts")
+    monkeypatch.setattr(lib, "fetch_official_content", lambda link: None)
 
     podcast_import = lib.podcast_import
     monkeypatch.setattr(podcast_import, "ROOT", workspace_root)
@@ -364,10 +461,10 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
         summary_path = lib.run_summary_path(bundle_id)
         summary_text = summary_path.read_text(encoding="utf-8")
         parsed_results = lib.parse_link_result_blocks(summary_text)
-        assert [entry["status"] for entry in parsed_results] == ["success", "success", "success"]
+        assert [entry["status"] for entry in parsed_results] == ["success", "success", "failed"]
         assert "library/sources/podcasts" in summary_text
         assert "library/sources/xiaohongshu" in summary_text
-        assert "library/sources/official" in summary_text
+        assert "official content fetch unavailable" in summary_text
 
         propose = lib.command_propose_direction(argparse.Namespace(bundle_id=bundle_id, direction=""))
         assert propose == 0
@@ -393,7 +490,7 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
         intake_text = (lib.INTAKE_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
         review_pack_text = (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
         writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
-        assert "- link_count: `3`" in intake_text
+        assert "- link_count: `2`" in intake_text
         assert "- direction_status: `user_provided`" in intake_text
         assert "direction_status: `user_provided`" in review_pack_text
         assert "direction_status: `user_provided`" in writeback_text

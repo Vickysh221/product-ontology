@@ -120,14 +120,28 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
     return []
 
 
-def build_proposed_direction_from_bundle_outputs(source_paths: list[str], artifact_paths: list[str]) -> str:
-    if source_paths or artifact_paths:
-        source_hint = ", ".join(source_paths) if source_paths else "未记录 source_paths"
-        artifact_hint = ", ".join(artifact_paths) if artifact_paths else "未记录 artifact_paths"
+def summarize_bundle_cues(link_results: list[dict[str, object]]) -> tuple[list[str], list[str]]:
+    link_types: list[str] = []
+    artifact_kinds: list[str] = []
+    for result in link_results:
+        link_type = str(result.get("link_type", "")).strip()
+        if link_type and link_type not in link_types:
+            link_types.append(link_type)
+        for artifact_path in result.get("artifact_paths", []) or []:
+            kind = Path(str(artifact_path)).stem.strip()
+            if kind and kind not in artifact_kinds:
+                artifact_kinds.append(kind)
+    return link_types, artifact_kinds
+
+
+def build_proposed_direction_from_bundle_outputs(link_results: list[dict[str, object]]) -> str:
+    link_types, artifact_kinds = summarize_bundle_cues(link_results)
+    if link_types or artifact_kinds:
+        link_type_hint = "、".join(link_types) if link_types else "多种来源"
+        artifact_hint = "、".join(artifact_kinds) if artifact_kinds else "可见证据"
         return (
-            "这批真实产物来自 "
-            f"{source_hint}，并写回到 {artifact_hint}。"
-            "它们共同在重写什么协作边界、责任边界或工作流结构？"
+            f"当前 bundle 主要包含 {link_type_hint} 材料，且可见证据类型包括 {artifact_hint}。"
+            "这些线索是否共同指向协作边界、责任边界或工作流结构的变化？"
         )
     return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
 
@@ -277,9 +291,16 @@ def ingest_xiaohongshu_link(link: str, *, force: bool) -> dict[str, object]:
     }
 
 
+def fetch_official_content(link: str) -> str | None:
+    return None
+
+
 def ingest_official_link(link: str, *, force: bool) -> dict[str, object]:
     if not is_official_target(link):
         raise ValueError("non-official web url is unsupported in this phase")
+    body = fetch_official_content(link)
+    if not body or not body.strip():
+        raise ValueError("official content fetch unavailable in this phase")
 
     _source_id, source_path, _artifact_dir = write_source_record(
         channel="official",
@@ -304,7 +325,7 @@ def ingest_official_link(link: str, *, force: bool) -> dict[str, object]:
         location="full_text",
         perspective="official_release",
         why_relevant="Stores the official page content for later extraction.",
-        body=f"Official source ingested through link-to-report.\n\nSource URL: {link}",
+        body=body,
     )
     return {
         "link": link,
@@ -578,9 +599,10 @@ def command_propose_direction(args: argparse.Namespace) -> int:
         research_direction = args.direction.strip()
         direction_status = "user_provided"
     else:
-        source_paths = read_markdown_list_field(summary_text, "source_paths")
-        artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
-        research_direction = build_proposed_direction_from_bundle_outputs(source_paths, artifact_paths)
+        link_results = [
+            result for result in parse_link_result_blocks(summary_text) if str(result.get("status", "")) == "success"
+        ]
+        research_direction = build_proposed_direction_from_bundle_outputs(link_results)
         direction_status = "system_suggested_pending"
 
     path = direction_path(bundle_id)
@@ -626,9 +648,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
     link_results = parse_link_result_blocks(summary_text)
     successful_results = [result for result in link_results if str(result.get("status", "")) == "success"]
     links = [str(result.get("link", "")) for result in successful_results if str(result.get("link", ""))]
-    link_types = sorted(
-        {str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))}
-    )
+    link_types = sorted({str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))})
     source_paths = read_markdown_list_field(summary_text, "source_paths")
     artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
     direction_text, direction_status = load_direction_input(args)
@@ -645,6 +665,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         direction_status=direction_status,
         links=links,
         link_types=link_types,
+        link_results=successful_results,
     )
     writeback_text = writeback_generate.generate_real_writeback(
         bundle_id=bundle_id,
@@ -654,6 +675,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         direction_status=direction_status,
         links=links,
         link_types=link_types,
+        link_results=successful_results,
     )
 
     intake_path = INTAKE_ROOT / f"{bundle_id}.md"
