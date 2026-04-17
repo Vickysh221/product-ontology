@@ -119,6 +119,18 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
     return []
 
 
+def build_proposed_direction_from_bundle_outputs(source_paths: list[str], artifact_paths: list[str]) -> str:
+    if source_paths or artifact_paths:
+        source_hint = ", ".join(source_paths) if source_paths else "未记录 source_paths"
+        artifact_hint = ", ".join(artifact_paths) if artifact_paths else "未记录 artifact_paths"
+        return (
+            "这批真实产物来自 "
+            f"{source_hint}，并写回到 {artifact_hint}。"
+            "它们共同在重写什么协作边界、责任边界或工作流结构？"
+        )
+    return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+
+
 def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
     blocks: list[list[str]] = []
     current_block: list[str] = []
@@ -559,12 +571,15 @@ def command_propose_direction(args: argparse.Namespace) -> int:
     if not summary_path.exists():
         print("bundle run summary is missing", file=sys.stderr)
         return 2
+    summary_text = summary_path.read_text(encoding="utf-8")
 
     if args.direction:
         research_direction = args.direction.strip()
         direction_status = "user_provided"
     else:
-        research_direction = "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+        source_paths = read_markdown_list_field(summary_text, "source_paths")
+        artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
+        research_direction = build_proposed_direction_from_bundle_outputs(source_paths, artifact_paths)
         direction_status = "system_suggested_pending"
 
     path = direction_path(bundle_id)

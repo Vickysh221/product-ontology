@@ -1,5 +1,7 @@
 import argparse
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,17 @@ def load_link_to_report_lib_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def cleanup_bundle_outputs(lib, bundle_id: str):
+    bundle_dir = lib.bundle_dir(bundle_id)
+    if bundle_dir.exists():
+        for path in bundle_dir.rglob("*"):
+            if path.is_file():
+                path.unlink()
+        for path in sorted((p for p in bundle_dir.rglob("*") if p.is_dir()), reverse=True):
+            path.rmdir()
+        bundle_dir.rmdir()
 
 
 def test_ingestion_adapters_cover_supported_real_ingestion_types():
@@ -169,6 +182,61 @@ def test_non_official_web_links_fail_cleanly(tmp_path, monkeypatch):
     assert len(parsed_results) == 1
     assert parsed_results[0]["status"] == "failed"
     assert "non-official" in parsed_results[0]["failure_reason"].lower()
+
+
+def test_propose_direction_uses_bundle_outputs_and_marks_pending(tmp_path):
+    lib = load_link_to_report_lib_module()
+    bundle_id = "bundle-output-direction"
+    cleanup_bundle_outputs(lib, bundle_id)
+    try:
+        bundle_dir = lib.bundle_dir(bundle_id)
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "run-summary.md").write_text(
+            "\n".join(
+                [
+                    "# Link Bundle Run Summary",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- dry_run: `false`",
+                    "- successful_link_count: `1`",
+                    "- failed_link_count: `0`",
+                    "- source_paths: [`library/sources/podcasts/demo.md`]",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                    "",
+                    "## Per-Link Results",
+                    "",
+                    "### Link Result",
+                    "",
+                    "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                    "- link_type: `podcast`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/podcasts/demo.md`",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                    "- failure_reason: ``",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/link_to_report.py",
+                "propose-direction",
+                "--bundle-id",
+                bundle_id,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        text = (bundle_dir / "direction.md").read_text(encoding="utf-8")
+        assert "- direction_status: `system_suggested_pending`" in text
+        assert "library/sources/podcasts/demo.md" in text
+        assert "library/artifacts/podcasts/demo/transcript.md" in text
+    finally:
+        cleanup_bundle_outputs(lib, bundle_id)
 
 
 @pytest.mark.parametrize(
