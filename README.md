@@ -190,7 +190,7 @@ This repository now includes a short-term `link-to-report` CLI for the manual-li
 ```bash
 python3 scripts/link_to_report.py ingest-links <url1> <url2> ... --bundle-id demo --dry-run
 python3 scripts/link_to_report.py propose-direction --bundle-id demo
-python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-file library/sessions/link-to-report/demo/direction.md
+python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-file library/sessions/link-to-report/demo/direction.md  # after approving/editing the generated direction.md
 ```
 
 Current behavior:
@@ -201,7 +201,7 @@ Current behavior:
 - `official` URLs only ingest when they match an approved target in `seed/official-sources.yaml`.
 - `propose-direction` records one research direction at `library/sessions/link-to-report/<bundle-id>/direction.md`.
 - `generate-report` blocks if the direction is still `system_suggested_pending`.
-- Once the direction is approved or user-provided, the CLI writes:
+- After you approve or edit the generated `direction.md`, the CLI writes:
   - `library/writeback-intakes/link-to-report/<bundle-id>.md`
   - `library/review-packs/link-to-report/<bundle-id>.md`
   - `library/writebacks/link-to-report/<bundle-id>.md`

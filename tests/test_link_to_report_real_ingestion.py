@@ -371,14 +371,20 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
 
         propose = lib.command_propose_direction(argparse.Namespace(bundle_id=bundle_id, direction=""))
         assert propose == 0
-        direction_text = (lib.direction_path(bundle_id)).read_text(encoding="utf-8")
+        direction_path = lib.direction_path(bundle_id)
+        direction_text = direction_path.read_text(encoding="utf-8")
         assert "- direction_status: `system_suggested_pending`" in direction_text
+        approved_direction_text = direction_text.replace(
+            "- direction_status: `system_suggested_pending`",
+            "- direction_status: `user_provided`",
+        )
+        direction_path.write_text(approved_direction_text, encoding="utf-8")
 
         generate = lib.command_generate_report(
             argparse.Namespace(
                 bundle_id=bundle_id,
-                direction="real-ingestion smoke direction",
-                direction_file="",
+                direction="",
+                direction_file=str(direction_path),
                 review_pack_output="",
                 writeback_output="",
             )
@@ -389,8 +395,8 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
         writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
         assert "- link_count: `3`" in intake_text
         assert "- direction_status: `user_provided`" in intake_text
-        assert "real-ingestion smoke direction" in review_pack_text
-        assert "real-ingestion smoke direction" in writeback_text
+        assert "direction_status: `user_provided`" in review_pack_text
+        assert "direction_status: `user_provided`" in writeback_text
         assert "MVP 占位" not in review_pack_text
         assert "MVP 占位" not in writeback_text
     finally:
