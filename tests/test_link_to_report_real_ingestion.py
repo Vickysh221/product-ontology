@@ -1,6 +1,5 @@
 import argparse
 import importlib.util
-import sys
 from pathlib import Path
 
 import pytest
@@ -9,18 +8,6 @@ import pytest
 def load_link_to_report_lib_module():
     module_path = Path(__file__).resolve().parents[1] / "scripts/link_to_report_lib.py"
     spec = importlib.util.spec_from_file_location("link_to_report_lib", module_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def load_script_module(module_filename: str, module_name: str):
-    module_path = Path(__file__).resolve().parents[1] / "scripts" / module_filename
-    scripts_dir = str(module_path.parent)
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -36,7 +23,8 @@ def test_ingestion_adapters_cover_supported_real_ingestion_types():
 
 
 def test_import_episode_returns_slug(tmp_path, monkeypatch):
-    podcast_import = load_script_module("podcast_import.py", "podcast_import")
+    lib = load_link_to_report_lib_module()
+    podcast_import = lib.podcast_import
     monkeypatch.setattr(podcast_import, "ROOT", tmp_path)
     monkeypatch.setattr(podcast_import, "SOURCES_DIR", tmp_path / "library" / "sources" / "podcasts")
     monkeypatch.setattr(podcast_import, "ARTIFACTS_DIR", tmp_path / "library" / "artifacts" / "podcasts")
@@ -49,19 +37,30 @@ def test_import_episode_returns_slug(tmp_path, monkeypatch):
 
 
 def test_import_note_url_returns_slug(tmp_path, monkeypatch):
-    xhs_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
+    lib = load_link_to_report_lib_module()
+    xhs_import = lib.xiaohongshu_redbook_import
     monkeypatch.setattr(xhs_import, "ROOT", tmp_path)
 
+    include_comments_values: list[bool] = []
+
     def fake_pull_with_redbook(args):
-        assert args.include_comments is False
+        include_comments_values.append(args.include_comments)
         return 0
 
     monkeypatch.setattr(xhs_import, "pull_with_redbook", fake_pull_with_redbook)
 
     slug = xhs_import.import_note_url("https://www.xiaohongshu.com/explore/123", force=True)
+    slug_with_comments_disabled = xhs_import.import_note_url(
+        "https://www.xiaohongshu.com/explore/123",
+        force=True,
+        include_comments=False,
+    )
 
     assert isinstance(slug, str)
     assert slug
+    assert isinstance(slug_with_comments_disabled, str)
+    assert slug_with_comments_disabled
+    assert include_comments_values == [True, False]
 
 
 def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
