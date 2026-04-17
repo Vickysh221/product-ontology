@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import hashlib
 import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
-
-from podcast_import import import_episode
-from source_ingest import write_artifact_record, write_source_record
-from xiaohongshu_redbook_import import import_note_url
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +22,27 @@ LINK_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("video", ("youtube.com", "bilibili.com", "tiktok.com", "douyin.com")),
 )
 INGESTION_ADAPTERS: dict[str, callable] = {}
+
+
+def load_script_module(module_filename: str, module_name: str):
+    module_path = Path(__file__).resolve().parent / module_filename
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"unable to load {module_name} from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+source_ingest = load_script_module("source_ingest.py", "source_ingest")
+podcast_import = load_script_module("podcast_import.py", "podcast_import")
+xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
+
+import_episode = podcast_import.import_episode
+write_artifact_record = source_ingest.write_artifact_record
+write_source_record = source_ingest.write_source_record
+import_note_url = xiaohongshu_redbook_import.import_note_url
 
 
 def slugify_bundle_id(value: str) -> str:

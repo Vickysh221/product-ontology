@@ -8,9 +8,6 @@ import pytest
 
 def load_link_to_report_lib_module():
     module_path = Path(__file__).resolve().parents[1] / "scripts/link_to_report_lib.py"
-    scripts_dir = str(module_path.parent)
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
     spec = importlib.util.spec_from_file_location("link_to_report_lib", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -54,7 +51,12 @@ def test_import_episode_returns_slug(tmp_path, monkeypatch):
 def test_import_note_url_returns_slug(tmp_path, monkeypatch):
     xhs_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
     monkeypatch.setattr(xhs_import, "ROOT", tmp_path)
-    monkeypatch.setattr(xhs_import, "pull_with_redbook", lambda args: 0)
+
+    def fake_pull_with_redbook(args):
+        assert args.include_comments is False
+        return 0
+
+    monkeypatch.setattr(xhs_import, "pull_with_redbook", fake_pull_with_redbook)
 
     slug = xhs_import.import_note_url("https://www.xiaohongshu.com/explore/123", force=True)
 

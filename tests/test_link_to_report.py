@@ -7,9 +7,6 @@ import subprocess
 
 def load_link_to_report_lib_module():
     module_path = Path(__file__).resolve().parents[1] / "scripts/link_to_report_lib.py"
-    scripts_dir = str(module_path.parent)
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
     spec = importlib.util.spec_from_file_location("link_to_report_lib", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

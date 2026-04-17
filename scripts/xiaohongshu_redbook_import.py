@@ -109,6 +109,7 @@ def import_note_url(note_url: str, *, force: bool = False) -> str:
         author="unknown",
         published_at="unknown",
         perspective="creator_commentary",
+        include_comments=False,
         body="",
         body_file="",
         comments_body="",
