@@ -20,6 +20,7 @@ LINK_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("podcast", ("podcast", "spotify.com", "podcasts.apple.com", "apple.com/podcast")),
     ("video", ("youtube.com", "bilibili.com", "tiktok.com", "douyin.com")),
 )
+INGESTION_ADAPTERS: dict[str, callable] = {}
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -88,18 +89,72 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
     return []
 
 
-def render_run_summary_markdown(bundle_id: str, links: list[str], dry_run: bool) -> str:
-    link_types = sorted({detect_link_type(link) for link in links})
+def render_link_result_block(result: dict[str, object] | str) -> str:
+    if isinstance(result, str):
+        result = {
+            "link": result,
+            "link_type": detect_link_type(result),
+            "status": "success",
+            "source_path": "",
+            "artifact_paths": [],
+            "failure_reason": "",
+        }
+
+    artifact_paths = [str(path) for path in result.get("artifact_paths", []) or []]
+    source_path = str(result.get("source_path", ""))
+    failure_reason = str(result.get("failure_reason", ""))
+    return "\n".join(
+        [
+            f"- link: `{str(result.get('link', ''))}`",
+            f"- link_type: `{str(result.get('link_type', 'unknown'))}`",
+            f"- status: `{str(result.get('status', 'failed'))}`",
+            f"- source_path: `{source_path}`",
+            f"- artifact_paths: {format_list(artifact_paths)}",
+            f"- failure_reason: `{failure_reason}`",
+        ]
+    )
+
+
+def render_run_summary_markdown(bundle_id: str, results: list[dict[str, object] | str], dry_run: bool) -> str:
+    normalized_results = [result if isinstance(result, dict) else {
+        "link": result,
+        "link_type": detect_link_type(result),
+        "status": "success",
+        "source_path": "",
+        "artifact_paths": [],
+        "failure_reason": "",
+    } for result in results]
+    successful_results = [result for result in normalized_results if str(result.get("status", "")) == "success"]
+    failed_results = [result for result in normalized_results if str(result.get("status", "")) == "failed"]
+    link_types = sorted({str(result.get("link_type", detect_link_type(str(result.get("link", ""))))) for result in normalized_results})
+    all_links = [str(result.get("link", "")) for result in normalized_results]
+    successful_links = [str(result.get("link", "")) for result in successful_results]
+    failed_links = [str(result.get("link", "")) for result in failed_results]
     lines = [
         "# Link Bundle Run Summary",
         "",
         f"- bundle_id: `{bundle_id}`",
         f"- dry_run: `{'true' if dry_run else 'false'}`",
-        f"- link_count: `{len(links)}`",
+        f"- successful_link_count: `{len(successful_results)}`",
+        f"- failed_link_count: `{len(failed_results)}`",
+        f"- link_count: `{len(normalized_results)}`",
         f"- link_types: {format_list(link_types)}",
-        f"- links: {format_list(links)}",
+        f"- links: {format_list(all_links)}",
+        f"- successful_links: {format_list(successful_links)}",
+        f"- failed_links: {format_list(failed_links)}",
+        "",
+        "## Link Results",
         "",
     ]
+    for index, result in enumerate(normalized_results, start=1):
+        lines.extend(
+            [
+                f"### Link Result {index}",
+                "",
+                render_link_result_block(result),
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -218,9 +273,64 @@ def command_ingest_links(args: argparse.Namespace) -> int:
         return 2
 
     bundle_id = slugify_bundle_id(args.bundle_id) if args.bundle_id else derive_bundle_id(links, "")
+    results: list[dict[str, object]] = []
+    for link in links:
+        link_type = detect_link_type(link)
+        if args.dry_run:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "dry_run",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": "",
+                }
+            )
+            continue
+
+        adapter = INGESTION_ADAPTERS.get(link_type)
+        if adapter is None:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "failed",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": f"unsupported link type: {link_type}",
+                }
+            )
+            continue
+
+        adapter_result = adapter(link, bundle_id)
+        if isinstance(adapter_result, dict):
+            results.append(
+                {
+                    "link": str(adapter_result.get("link", link)),
+                    "link_type": str(adapter_result.get("link_type", link_type)),
+                    "status": str(adapter_result.get("status", "success")),
+                    "source_path": str(adapter_result.get("source_path", "")),
+                    "artifact_paths": [str(path) for path in adapter_result.get("artifact_paths", []) or []],
+                    "failure_reason": str(adapter_result.get("failure_reason", "")),
+                }
+            )
+            continue
+
+        results.append(
+            {
+                "link": link,
+                "link_type": link_type,
+                "status": "failed",
+                "source_path": "",
+                "artifact_paths": [],
+                "failure_reason": "adapter returned no structured result",
+            }
+        )
+
     summary_path = run_summary_path(bundle_id)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
-    summary_path.write_text(render_run_summary_markdown(bundle_id, links, args.dry_run), encoding="utf-8")
+    summary_path.write_text(render_run_summary_markdown(bundle_id, results, args.dry_run), encoding="utf-8")
     print(summary_path.relative_to(ROOT))
     return 0
 
@@ -279,7 +389,7 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     summary_text = summary_path.read_text(encoding="utf-8")
-    links = read_markdown_list_field(summary_text, "links")
+    links = read_markdown_list_field(summary_text, "successful_links") or read_markdown_list_field(summary_text, "links")
     link_types = read_markdown_list_field(summary_text, "link_types")
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
