@@ -131,6 +131,13 @@ def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
     return results
 
 
+def invoke_ingestion_adapter(adapter: object, link: str, force: bool) -> dict[str, object] | None:
+    if not callable(adapter):
+        raise TypeError("ingestion adapter must be callable")
+    result = adapter(link, force=force)
+    return result if isinstance(result, dict) else None
+
+
 def render_link_result_block(result: dict[str, object] | str) -> str:
     if isinstance(result, str):
         result = {
@@ -350,7 +357,7 @@ def command_ingest_links(args: argparse.Namespace) -> int:
             )
             continue
 
-        adapter_result = adapter(link, force=args.force)
+        adapter_result = invoke_ingestion_adapter(adapter, link, args.force)
         if isinstance(adapter_result, dict):
             results.append(
                 {

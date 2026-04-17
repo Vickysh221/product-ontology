@@ -49,6 +49,11 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     assert result == 0
     summary_path = link_root / bundle_id / "run-summary.md"
     text = summary_path.read_text(encoding="utf-8")
+    parsed_results = lib.parse_link_result_blocks(text)
+    assert len(parsed_results) == 1
+    assert parsed_results[0]["link"] == link
+    assert parsed_results[0]["link_type"] == "podcast"
+    assert parsed_results[0]["status"] == "success"
     expected_lines = [
         "# Link Bundle Run Summary",
         f"- bundle_id: `{bundle_id}`",

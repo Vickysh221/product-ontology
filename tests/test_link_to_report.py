@@ -1,3 +1,4 @@
+import sys
 import importlib.util
 from pathlib import Path
 import shutil
@@ -23,7 +24,7 @@ def cleanup_bundle_outputs(lib, bundle_id: str):
 
 def test_link_to_report_help_lists_three_subcommands():
     result = subprocess.run(
-        ["python3", "scripts/link_to_report.py", "--help"],
+        [sys.executable, "scripts/link_to_report.py", "--help"],
         check=False,
         capture_output=True,
         text=True,
@@ -36,7 +37,7 @@ def test_link_to_report_help_lists_three_subcommands():
 
 def test_ingest_links_requires_at_least_one_link():
     result = subprocess.run(
-        ["python3", "scripts/link_to_report.py", "ingest-links"],
+        [sys.executable, "scripts/link_to_report.py", "ingest-links"],
         check=False,
         capture_output=True,
         text=True,
@@ -49,7 +50,7 @@ def test_generate_report_requires_direction_input(tmp_path):
     tmp_path.mkdir(exist_ok=True)
     result = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "scripts/link_to_report.py",
             "generate-report",
             "--bundle-id",
@@ -96,7 +97,7 @@ def test_ingest_links_dry_run_writes_run_summary_and_derives_bundle_path(tmp_pat
         summary_path = lib.run_summary_path(expected_bundle_id)
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "ingest-links",
                 "--dry-run",
@@ -128,7 +129,7 @@ def test_propose_direction_writes_default_direction_record(tmp_path):
         )
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "propose-direction",
                 "--bundle-id",
@@ -161,7 +162,7 @@ def test_propose_direction_accepts_user_direction_and_marks_it_user_provided(tmp
         )
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "propose-direction",
                 "--bundle-id",
@@ -199,7 +200,7 @@ def test_generate_report_blocks_pending_direction_from_file(tmp_path):
         )
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "generate-report",
                 "--bundle-id",
@@ -260,9 +261,14 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
             ),
             encoding="utf-8",
         )
+        summary_text = (bundle_dir / "run-summary.md").read_text(encoding="utf-8")
+        parsed_results = lib.parse_link_result_blocks(summary_text)
+        assert len(parsed_results) == 2
+        assert parsed_results[0]["status"] == "success"
+        assert parsed_results[1]["status"] == "failed"
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "generate-report",
                 "--bundle-id",
@@ -332,6 +338,8 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
             ),
             encoding="utf-8",
         )
+        parsed_results = lib.parse_link_result_blocks((bundle_dir / "run-summary.md").read_text(encoding="utf-8"))
+        assert [result["status"] for result in parsed_results] == ["success", "success"]
         direction_file = tmp_path / "direction.md"
         direction_file.write_text(
             "\n".join(
@@ -348,7 +356,7 @@ def test_generate_report_writes_three_files_from_direction_file(tmp_path):
         )
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "generate-report",
                 "--bundle-id",
@@ -399,7 +407,7 @@ def test_link_to_report_dry_run_end_to_end_smoke(tmp_path):
 
         ingest = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "ingest-links",
                 "--dry-run",
@@ -431,7 +439,7 @@ def test_link_to_report_dry_run_end_to_end_smoke(tmp_path):
 
         generate = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "scripts/link_to_report.py",
                 "generate-report",
                 "--bundle-id",
