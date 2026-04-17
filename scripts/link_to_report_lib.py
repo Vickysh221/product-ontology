@@ -132,13 +132,41 @@ def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
     return results
 
 
-def invoke_ingestion_adapter(adapter: object, link: str, force: bool) -> dict[str, object] | None:
+def validate_ingestion_adapter_result(result: object, link: str, link_type: str) -> dict[str, object]:
+    if not isinstance(result, dict):
+        raise TypeError("ingestion adapter must return a dict result")
+
+    status = result.get("status", "success")
+    if status not in {"success", "dry_run", "failed"}:
+        raise ValueError(f"ingestion adapter returned unsupported status: {status!r}")
+
+    source_path = result.get("source_path", "")
+    if not isinstance(source_path, str):
+        raise TypeError("ingestion adapter source_path must be a string")
+
+    failure_reason = result.get("failure_reason", "")
+    if not isinstance(failure_reason, str):
+        raise TypeError("ingestion adapter failure_reason must be a string")
+
+    artifact_paths = result.get("artifact_paths", [])
+    if not isinstance(artifact_paths, list) or any(not isinstance(path, str) for path in artifact_paths):
+        raise TypeError("ingestion adapter artifact_paths must be a list of strings")
+
+    return {
+        "link": str(result.get("link", link)),
+        "link_type": str(result.get("link_type", link_type)),
+        "status": str(status),
+        "source_path": source_path,
+        "artifact_paths": artifact_paths,
+        "failure_reason": failure_reason,
+    }
+
+
+def invoke_ingestion_adapter(adapter: object, link: str, force: bool, link_type: str) -> dict[str, object]:
     if not callable(adapter):
         raise TypeError("ingestion adapter must be callable")
     result = adapter(link, force=force)
-    if not isinstance(result, dict):
-        raise TypeError("ingestion adapter must return a dict result")
-    return result
+    return validate_ingestion_adapter_result(result, link, link_type)
 
 
 def render_link_result_block(result: dict[str, object] | str) -> str:
@@ -360,17 +388,22 @@ def command_ingest_links(args: argparse.Namespace) -> int:
             )
             continue
 
-        adapter_result = invoke_ingestion_adapter(adapter, link, args.force)
-        results.append(
-            {
-                "link": str(adapter_result.get("link", link)),
-                "link_type": str(adapter_result.get("link_type", link_type)),
-                "status": str(adapter_result.get("status", "success")),
-                "source_path": str(adapter_result.get("source_path", "")),
-                "artifact_paths": [str(path) for path in adapter_result.get("artifact_paths", []) or []],
-                "failure_reason": str(adapter_result.get("failure_reason", "")),
-            }
-        )
+        try:
+            adapter_result = invoke_ingestion_adapter(adapter, link, args.force, link_type)
+        except Exception as exc:
+            results.append(
+                {
+                    "link": link,
+                    "link_type": link_type,
+                    "status": "failed",
+                    "source_path": "",
+                    "artifact_paths": [],
+                    "failure_reason": f"{exc}",
+                }
+            )
+            continue
+
+        results.append(adapter_result)
 
     summary_path = run_summary_path(bundle_id)
     summary_path.parent.mkdir(parents=True, exist_ok=True)

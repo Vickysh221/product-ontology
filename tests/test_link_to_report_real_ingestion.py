@@ -2,6 +2,8 @@ import argparse
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 def load_link_to_report_lib_module():
     module_path = Path(__file__).resolve().parents[1] / "scripts/link_to_report_lib.py"
@@ -75,22 +77,64 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
         assert line not in text
 
 
-def test_command_ingest_links_rejects_non_dict_adapter_results(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "bad_result, expected_error",
+    [
+        ({"status": "maybe", "source_path": "", "artifact_paths": [], "failure_reason": ""}, "unsupported status"),
+        ({"status": "success", "source_path": "", "artifact_paths": "oops", "failure_reason": ""}, "artifact_paths"),
+        ({"status": "success", "source_path": 1, "artifact_paths": [], "failure_reason": ""}, "source_path"),
+        ({"status": "success", "source_path": "", "artifact_paths": [], "failure_reason": 1}, "failure_reason"),
+    ],
+)
+def test_validate_ingestion_adapter_result_rejects_malformed_dict(bad_result, expected_error):
+    lib = load_link_to_report_lib_module()
+    with pytest.raises((TypeError, ValueError), match=expected_error):
+        lib.validate_ingestion_adapter_result(bad_result, "https://podcasts.apple.com/us/podcast/example/id123", "podcast")
+
+
+def test_command_ingest_links_records_failed_result_for_malformed_adapter_output(tmp_path, monkeypatch):
     lib = load_link_to_report_lib_module()
     workspace_root = tmp_path / "workspace"
     monkeypatch.setattr(lib, "ROOT", workspace_root)
     monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
     monkeypatch.setattr(lib, "detect_link_type", lambda _: "podcast")
 
-    def bad_adapter(link_url: str, force: bool = False):
-        return ("not", "a", "dict")
+    def adapter(link_url: str, force: bool = False):
+        if "good" in link_url:
+            return {
+                "link": link_url,
+                "link_type": "podcast",
+                "status": "success",
+                "source_path": "library/sources/podcasts/good.md",
+                "artifact_paths": ["library/artifacts/podcasts/good/transcript.md"],
+                "failure_reason": "",
+            }
+        return {
+            "link": link_url,
+            "link_type": "podcast",
+            "status": "maybe",
+            "source_path": "",
+            "artifact_paths": [],
+            "failure_reason": "",
+        }
 
-    monkeypatch.setattr(lib, "INGESTION_ADAPTERS", {"podcast": bad_adapter})
+    monkeypatch.setattr(lib, "INGESTION_ADAPTERS", {"podcast": adapter})
 
-    try:
-        lib.command_ingest_links(
-            argparse.Namespace(links=["https://podcasts.apple.com/us/podcast/example/id123"], bundle_id="demo", dry_run=False, force=False)
+    result = lib.command_ingest_links(
+        argparse.Namespace(
+            links=[
+                "https://podcasts.apple.com/us/podcast/good/id123",
+                "https://podcasts.apple.com/us/podcast/bad/id123",
+            ],
+            bundle_id="demo",
+            dry_run=False,
+            force=False,
         )
-        assert False, "expected TypeError"
-    except TypeError as exc:
-        assert "return a dict" in str(exc)
+    )
+
+    assert result == 0
+    summary_path = workspace_root / "library" / "sessions" / "link-to-report" / "demo" / "run-summary.md"
+    text = summary_path.read_text(encoding="utf-8")
+    parsed_results = lib.parse_link_result_blocks(text)
+    assert [entry["status"] for entry in parsed_results] == ["success", "failed"]
+    assert "unsupported status" in text
