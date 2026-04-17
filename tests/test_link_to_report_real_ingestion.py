@@ -369,25 +369,16 @@ def test_real_ingestion_end_to_end_smoke(tmp_path, monkeypatch):
         assert "library/sources/xiaohongshu" in summary_text
         assert "library/sources/official" in summary_text
 
-        direction_file = tmp_path / "direction.md"
-        direction_file.write_text(
-            "\n".join(
-                [
-                    "# Research Direction Record",
-                    "",
-                    f"- bundle_id: `{bundle_id}`",
-                    "- research_direction: `real-ingestion smoke direction`",
-                    "- direction_status: `user_provided`",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
+        propose = lib.command_propose_direction(argparse.Namespace(bundle_id=bundle_id, direction=""))
+        assert propose == 0
+        direction_text = (lib.direction_path(bundle_id)).read_text(encoding="utf-8")
+        assert "- direction_status: `system_suggested_pending`" in direction_text
+
         generate = lib.command_generate_report(
             argparse.Namespace(
                 bundle_id=bundle_id,
-                direction="",
-                direction_file=str(direction_file),
+                direction="real-ingestion smoke direction",
+                direction_file="",
                 review_pack_output="",
                 writeback_output="",
             )
