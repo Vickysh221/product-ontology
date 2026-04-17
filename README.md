@@ -196,12 +196,14 @@ python3 scripts/link_to_report.py generate-report --bundle-id demo --direction-f
 Current behavior:
 - `ingest-links` creates a bundle-scoped run summary under `library/sessions/link-to-report/<bundle-id>/run-summary.md`.
 - `ingest-links` now resolves real ingestion adapters for `podwise` and `xiaohongshu` URLs.
+- Storage naming follows repository directories: Podwise imports land under `library/artifacts/podcasts/`, while Xiaohongshu imports land under `library/artifacts/xiaohongshu/`.
 - `podwise` URLs import transcript, summary, and highlights artifacts.
 - `xiaohongshu` URLs import note text and can opt into comments when the adapter asks for them.
 - `official` URLs are recognized only as an explicit reserved path in this phase.
 - If an `official` URL matches an approved target in `seed/official-sources.yaml` but no real page-content fetcher is available, the CLI fails transparently instead of fabricating content.
 - `propose-direction` records one research direction at `library/sessions/link-to-report/<bundle-id>/direction.md`.
 - `generate-report` blocks if the direction is still `system_suggested_pending`.
+- `generate-report` now reads real artifact content from supported channels (`podwise`, `xiaohongshu`) and builds review packs from `Direct quote / Paraphrase / Evidence / Why it matters` instead of bundle metadata alone.
 - After you approve or edit the generated `direction.md`, the CLI writes:
   - `library/writeback-intakes/link-to-report/<bundle-id>.md`
   - `library/review-packs/link-to-report/<bundle-id>.md`

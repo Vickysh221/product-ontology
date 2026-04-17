@@ -189,6 +189,16 @@ def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
     return results
 
 
+def collect_bundle_artifact_paths(link_results: list[dict[str, object]]) -> list[str]:
+    artifact_paths: list[str] = []
+    for result in link_results:
+        for path in result.get("artifact_paths", []) or []:
+            path_text = str(path)
+            if path_text and path_text not in artifact_paths:
+                artifact_paths.append(path_text)
+    return artifact_paths
+
+
 def load_official_target_urls() -> list[str]:
     official_sources_file = ROOT / "seed" / "official-sources.yaml"
     if not official_sources_file.exists():
@@ -649,34 +659,48 @@ def command_generate_report(args: argparse.Namespace) -> int:
     successful_results = [result for result in link_results if str(result.get("status", "")) == "success"]
     links = [str(result.get("link", "")) for result in successful_results if str(result.get("link", ""))]
     link_types = sorted({str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))})
-    source_paths = read_markdown_list_field(summary_text, "source_paths")
-    artifact_paths = read_markdown_list_field(summary_text, "artifact_paths")
+    source_paths = [
+        str(result.get("source_path", ""))
+        for result in successful_results
+        if str(result.get("source_path", ""))
+    ]
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
         print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)
         return 2
+    artifact_paths = collect_bundle_artifact_paths(successful_results)
+    if not artifact_paths:
+        print("no artifact paths available for generate-report", file=sys.stderr)
+        return 2
 
     intake_text = render_intake_markdown(bundle_id, links, direction_text, direction_status, link_types)
-    review_pack_text = writeback_generate.generate_real_review_pack(
-        bundle_id=bundle_id,
-        source_paths=source_paths,
-        artifact_paths=artifact_paths,
-        direction_text=direction_text,
-        direction_status=direction_status,
-        links=links,
-        link_types=link_types,
-        link_results=successful_results,
-    )
-    writeback_text = writeback_generate.generate_real_writeback(
-        bundle_id=bundle_id,
-        source_paths=source_paths,
-        artifact_paths=artifact_paths,
-        direction_text=direction_text,
-        direction_status=direction_status,
-        links=links,
-        link_types=link_types,
-        link_results=successful_results,
-    )
+    try:
+        review_pack_text = writeback_generate.generate_real_review_pack(
+            bundle_id=bundle_id,
+            source_paths=source_paths,
+            artifact_paths=artifact_paths,
+            direction_text=direction_text,
+            direction_status=direction_status,
+            links=links,
+            link_types=link_types,
+            link_results=successful_results,
+            root=ROOT,
+        )
+        writeback_text = writeback_generate.generate_real_writeback(
+            bundle_id=bundle_id,
+            source_paths=source_paths,
+            artifact_paths=artifact_paths,
+            direction_text=direction_text,
+            direction_status=direction_status,
+            links=links,
+            link_types=link_types,
+            link_results=successful_results,
+            review_pack_text=review_pack_text,
+            root=ROOT,
+        )
+    except FileNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     intake_path = INTAKE_ROOT / f"{bundle_id}.md"
     review_pack_path = REVIEW_PACK_ROOT / f"{bundle_id}.md"

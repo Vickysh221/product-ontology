@@ -1,5 +1,6 @@
 import re
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
 import pytest
@@ -518,6 +519,94 @@ def test_materialized_review_pack_uses_three_theme_clusters():
     cluster_titles = re.findall(r"^### 主题：(.+)$", text, flags=re.M)
     assert cluster_titles == ["执行控制层", "协作与角色层", "治理与前台 UX 外显层"]
     assert text.count("### 主题：") == 3
+
+
+def test_generate_real_review_pack_is_artifact_driven(tmp_path):
+    module = load_writeback_generate_module()
+    artifact_root = tmp_path / "library" / "artifacts" / "podcasts" / "demo"
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    (artifact_root / "summary.md").write_text(
+        "## Content\nmulti-agent 的关键不在更多 agent，而在治理边界。\n",
+        encoding="utf-8",
+    )
+    (artifact_root / "highlights.md").write_text(
+        "## Content\n1. [00:31] Harness engineering 让 agent 能在围栏内协作。\n",
+        encoding="utf-8",
+    )
+
+    cwd = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        text = module.generate_real_review_pack(
+            bundle_id="demo",
+            source_paths=["library/sources/podcasts/demo.md"],
+            artifact_paths=[
+                "library/artifacts/podcasts/demo/summary.md",
+                "library/artifacts/podcasts/demo/highlights.md",
+            ],
+            direction_text="multi-agent 是否已经进入可治理的 Agent Team 范式迁移",
+            direction_status="user_provided",
+            links=["https://podcasts.apple.com/us/podcast/example/id123"],
+            link_types=["podcast"],
+            link_results=[
+                {
+                    "link": "https://podcasts.apple.com/us/podcast/example/id123",
+                    "link_type": "podcast",
+                    "source_path": "library/sources/podcasts/demo.md",
+                    "artifact_paths": [
+                        "library/artifacts/podcasts/demo/summary.md",
+                        "library/artifacts/podcasts/demo/highlights.md",
+                    ],
+                }
+            ],
+        )
+    finally:
+        os.chdir(cwd)
+
+    assert "Direct quote" in text
+    assert "Paraphrase" in text
+    assert "Evidence" in text
+    assert "Why it matters" in text
+    assert "Harness engineering" in text
+    assert "治理边界" in text
+
+
+def test_generate_real_writeback_uses_artifact_evidence(tmp_path):
+    module = load_writeback_generate_module()
+    artifact_root = tmp_path / "library" / "artifacts" / "xiaohongshu" / "demo"
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    (artifact_root / "full_text.md").write_text(
+        "## Content\nAgent 真正难的不是执行，而是跨轮次保持责任边界。\n",
+        encoding="utf-8",
+    )
+
+    cwd = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        text = module.generate_real_writeback(
+            bundle_id="demo",
+            source_paths=["library/sources/xiaohongshu/demo.md"],
+            artifact_paths=["library/artifacts/xiaohongshu/demo/full_text.md"],
+            direction_text="agent team 的责任边界如何被产品化",
+            direction_status="user_provided",
+            links=["https://www.xiaohongshu.com/explore/123"],
+            link_types=["xiaohongshu"],
+            link_results=[
+                {
+                    "link": "https://www.xiaohongshu.com/explore/123",
+                    "link_type": "xiaohongshu",
+                    "source_path": "library/sources/xiaohongshu/demo.md",
+                    "artifact_paths": ["library/artifacts/xiaohongshu/demo/full_text.md"],
+                }
+            ],
+        )
+    finally:
+        os.chdir(cwd)
+
+    assert "## 文献综述" in text
+    assert "## AI-native UX 视角" in text
+    assert "责任边界" in text
+    assert "attention arbitration" in text or "责任状态" in text or "handoff" in text
 
 
 def test_materialized_review_pack_has_multiple_quotes_per_cluster():

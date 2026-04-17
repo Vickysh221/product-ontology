@@ -2,10 +2,40 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
 import sys
 from pathlib import Path
 import os
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_script_module(module_filename: str, module_name: str):
+    module_path = Path(__file__).resolve().parent / module_filename
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"unable to load {module_name} from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    previous_module = sys.modules.get(module_name)
+    try:
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+    except Exception:
+        if previous_module is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous_module
+        raise
+    return module
+
+
+artifact_evidence = load_script_module("artifact_evidence.py", "artifact_evidence")
+collect_report_artifacts = artifact_evidence.collect_report_artifacts
+build_artifact_evidence_candidates = artifact_evidence.build_evidence_candidates
+cluster_evidence_candidates = artifact_evidence.cluster_evidence_candidates
+detect_channel_from_artifact_path = artifact_evidence.detect_channel_from_artifact_path
 
 
 def read_file(path: str | Path) -> str:
@@ -1142,8 +1172,9 @@ def parse_review_theme_blocks(review_text: str) -> list[dict[str, str]]:
                 prelude_lines.append(stripped)
                 continue
             if current_key == "quotes":
+                if stripped.startswith("- "):
+                    stripped = stripped[2:].strip()
                 block["quotes"].append(stripped)
-                current_key = ""
                 continue
             if block[current_key]:
                 block[current_key] += "\n" + stripped
@@ -1167,12 +1198,16 @@ def build_writeback_literature_review(review_text: str) -> str:
         evidence_ref = block["evidence"]
         if evidence_ref.startswith("- "):
             evidence_ref = evidence_ref[2:].strip()
+        quotes = block["quotes"] or ["未提取到代表引文。"]
+        quote_1 = quotes[0]
+        quote_2 = quotes[1] if len(quotes) > 1 else quotes[0]
         sections.append(
             "\n".join(
                 [
                     f"### 线索 {index}：{theme_label}",
                     "",
-                    f"代表引文：{block['quote']}",
+                    f"代表引文 1：{quote_1}",
+                    f"代表引文 2：{quote_2}",
                     "",
                     f"观察：{block['paraphrase']}",
                     "",
@@ -1242,6 +1277,163 @@ def build_writeback_research_direction(research_direction: str, direction_status
         f"- 研究方向：{research_direction}\n"
         f"- 当前状态：{question_source_map.get(direction_status, direction_status)}"
     )
+
+
+def collect_artifact_theme_clusters(
+    *,
+    research_direction: str,
+    artifact_paths: list[str],
+    root: Path | None = None,
+) -> list[dict[str, object]]:
+    workspace_root = root or Path.cwd()
+    channel_paths: dict[str, list[str]] = {}
+    for artifact_path in artifact_paths:
+        channel = detect_channel_from_artifact_path(artifact_path)
+        channel_paths.setdefault(channel, []).append(artifact_path)
+
+    all_candidates: list[dict[str, str]] = []
+    for channel, paths in channel_paths.items():
+        artifact_items = collect_report_artifacts(channel=channel, artifact_paths=paths, root=workspace_root)
+        all_candidates.extend(
+            build_artifact_evidence_candidates(
+                research_direction=research_direction,
+                channel=channel,
+                artifact_items=artifact_items,
+            )
+        )
+    return cluster_evidence_candidates(all_candidates)
+
+
+def resolve_artifact_root(artifact_paths: list[str]) -> Path:
+    if artifact_paths and all((ROOT / artifact_path).exists() for artifact_path in artifact_paths):
+        return ROOT
+    return Path.cwd()
+
+
+def render_artifact_theme_review(clusters: list[dict[str, object]]) -> str:
+    sections: list[str] = []
+    for cluster in clusters:
+        entries = list(cluster.get("entries", []))
+        if not entries:
+            continue
+        quote_lines = [f"- {entry['quote']}" for entry in entries[:2]]
+        paraphrase_lines = [f"- {entry['paraphrase']}" for entry in entries[:2]]
+        evidence_lines = [f"- `{entry['artifact_ref']}`" for entry in entries[:2]]
+        why_lines = [f"- {entry['why_selected']}" for entry in entries[:2]]
+        sections.append(
+            "\n".join(
+                [
+                    f"### 主题：{cluster['theme']}",
+                    "",
+                    "**Direct quote**",
+                    *quote_lines,
+                    "",
+                    "**Paraphrase**",
+                    *paraphrase_lines,
+                    "",
+                    "**Evidence**",
+                    *evidence_lines,
+                    "",
+                    "**Why it matters**",
+                    *why_lines,
+                ]
+            )
+        )
+    return "\n\n".join(sections)
+
+
+def build_artifact_tensions(clusters: list[dict[str, object]]) -> list[str]:
+    lines: list[str] = []
+    for cluster in clusters:
+        counter_quotes = [
+            entry["quote"]
+            for entry in cluster.get("entries", [])
+            if entry.get("claim_role") in {"counter_signal", "tension", "open_question"}
+        ]
+        if counter_quotes:
+            lines.append(f"- {cluster['theme']}：{'；'.join(counter_quotes[:2])}")
+    return lines or ["- 当前材料里未出现强 counter-signal，但这不代表 tension 已被消除。"]
+
+
+def build_bundle_problem_statement_from_clusters(clusters: list[dict[str, object]]) -> str:
+    theme_names = [str(cluster["theme"]) for cluster in clusters if cluster.get("entries")]
+    return build_bundle_problem_statement_from_theme_names(theme_names)
+
+
+def build_bundle_problem_statement_from_theme_names(theme_names: list[str]) -> str:
+    theme_phrase = "、".join(theme_names[:3]) or "执行控制、协作角色与治理外显层"
+    return (
+        "这轮材料真正指向的问题，不再是单个 agent 能不能完成更多任务，而是如何把"
+        f"{theme_phrase} 收束成一套默认可用、可追踪、可解释的协作结构。"
+    )
+
+
+def build_bundle_assumptions_from_clusters(clusters: list[dict[str, object]]) -> str:
+    supported: list[str] = []
+    pending: list[str] = []
+    for cluster in clusters:
+        entries = list(cluster.get("entries", []))
+        if not entries:
+            continue
+        anchor = entries[0]
+        supported.append(f"- `{cluster['theme']}` 已经不只是概念讨论，而开始通过具体证据进入产品机制层。")
+        if any(entry.get("claim_role") in {"counter_signal", "tension", "open_question"} for entry in entries):
+            pending.append(f"- `{cluster['theme']}` 仍存在反证或保留问题，需要更多样本来确认是否会成为默认结构。")
+    if not pending:
+        pending.append("- 当前样本仍偏一线观点材料，尚不足以证明这些结构已经被广泛产品化。")
+    return "当前工作假设\n" + "\n".join(supported) + "\n\n仍待验证\n" + "\n".join(pending)
+
+
+def build_bundle_ai_native_ux_section(clusters: list[dict[str, object]]) -> str:
+    cluster_names = [str(cluster["theme"]) for cluster in clusters[:3]]
+    return build_bundle_ai_native_ux_section_from_theme_names(cluster_names)
+
+
+def build_bundle_ai_native_ux_section_from_theme_names(cluster_names: list[str]) -> str:
+    lens_pack = build_ai_native_ux_lens_pack()
+    cluster_phrase = "、".join(cluster_names[:3]) or "执行控制、协作角色与治理外显层"
+    lines = [
+        f"从 AI-native UX 角度看，这轮材料把 {cluster_phrase} 推到了前台：用户需要看见责任、决策、升级和审计对象，而不是只看见结果输出。",
+    ]
+    if lens_pack:
+        lines.append(f"- 这轮重点参考的 UX lens 包括：{', '.join(lens_pack[:4])}。")
+    lines.extend(
+        [
+            "- 责任状态需要前台可见，否则多人/多 agent 协作会退化成黑箱执行。",
+            "- attention arbitration 需要告诉用户当前哪个 agent 在推进、等待或需要升级。",
+            "- handoff / rollback / escalation 不能只是后台流程，而要成为可操作的前台对象。",
+            "- 审计与证据抽屉应允许用户回看关键引文和判断依据，而不是只接受最终摘要。",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def build_bundle_literature_review(clusters: list[dict[str, object]]) -> str:
+    sections: list[str] = []
+    for index, cluster in enumerate(clusters, start=1):
+        entries = list(cluster.get("entries", []))
+        if not entries:
+            continue
+        first_entry = entries[0]
+        second_entry = entries[1] if len(entries) > 1 else entries[0]
+        evidence_refs = [f"`{entry['artifact_ref']}`" for entry in entries[:2]]
+        sections.append(
+            "\n".join(
+                [
+                    f"### 线索 {index}：{cluster['theme']}",
+                    "",
+                    f"代表引文 1：{first_entry['quote']}",
+                    f"代表引文 2：{second_entry['quote']}",
+                    "",
+                    f"观察：{first_entry['paraphrase']}",
+                    "",
+                    f"证据来源：{', '.join(evidence_refs)}",
+                    "",
+                    f"为什么重要：{first_entry['why_selected']}",
+                ]
+            )
+        )
+    return "\n\n".join(sections)
 
 
 def build_longform_sections(
@@ -1314,38 +1506,28 @@ def render_review_pack_from_bundle(
     links: list[str],
     link_types: list[str],
     link_results: list[dict[str, object]] | None = None,
+    root: Path | None = None,
 ) -> str:
-    theme_lines: list[str] = []
+    clusters = collect_artifact_theme_clusters(
+        research_direction=direction_text,
+        artifact_paths=artifact_paths,
+        root=root or resolve_artifact_root(artifact_paths),
+    )
+    theme_lines = render_artifact_theme_review(clusters)
+    tension_lines = build_artifact_tensions(clusters)
     lineage = link_results or []
-    if not lineage:
-        lineage = []
-        for index, link in enumerate(links):
-            lineage.append(
-                {
-                    "link": link,
-                    "link_type": link_types[index] if index < len(link_types) else "unknown",
-                    "source_path": source_paths[index] if index < len(source_paths) else "",
-                    "artifact_paths": [artifact_paths[index]] if index < len(artifact_paths) else [],
-                }
-            )
-    for index, result in enumerate(lineage, start=1):
-        link = str(result.get("link", ""))
-        link_type = str(result.get("link_type", "unknown"))
-        source_path = str(result.get("source_path", ""))
-        per_link_artifacts = [str(path) for path in result.get("artifact_paths", []) or []]
-        theme_lines.append(
-            "\n".join(
+    lineage_lines = ["- none recorded"]
+    if lineage:
+        lineage_lines = []
+        for result in lineage:
+            lineage_lines.extend(
                 [
-                    f"### Link {index}",
-                    "",
-                    f"- url: `{link}`",
-                    f"- link_type: `{link_type}`",
-                    f"- source_path: `{source_path}`",
-                    f"- artifact_paths: {format_list(per_link_artifacts)}",
-                    f"- paraphrase: {build_review_pack_paraphrase(direction_text, link_type)}",
+                    f"- url: `{result.get('link', '')}`",
+                    f"  - link_type: `{result.get('link_type', 'unknown')}`",
+                    f"  - source_path: `{result.get('source_path', '')}`",
+                    f"  - artifact_paths: {format_list([str(path) for path in result.get('artifact_paths', []) or []])}",
                 ]
             )
-        )
 
     return "\n".join(
         [
@@ -1364,24 +1546,27 @@ def render_review_pack_from_bundle(
             "",
             "## Review Introduction",
             "",
-            "这份 review pack 直接引用 bundle 里的真实 source 和 artifact 产物，而不是占位文本。",
+            "这份 review pack 先从 artifact 内容里筛证据，再按主题聚类；它不按来源顺序复述，也不先给综合判断。",
+            "",
+            "## Source Lineage",
+            "",
+            *lineage_lines,
             "",
             "## Thematic Literature Review",
             "",
-            "\n\n".join(theme_lines) if theme_lines else "- none recorded",
+            theme_lines if theme_lines else "- none recorded",
             "",
             "## Counter-Signals And Tensions",
             "",
-            f"- source_paths: {format_list(source_paths)}",
-            f"- artifact_paths: {format_list(artifact_paths)}",
+            "\n".join(tension_lines),
             "",
             "## Draft Problem Statement",
             "",
-            build_final_problem_statement(),
+            build_bundle_problem_statement_from_clusters(clusters),
             "",
             "## Draft Assumptions",
             "",
-            build_final_assumptions(),
+            build_bundle_assumptions_from_clusters(clusters),
             "",
         ]
     )
@@ -1396,18 +1581,31 @@ def render_writeback_from_bundle(
     links: list[str],
     link_types: list[str],
     link_results: list[dict[str, object]] | None = None,
+    review_pack_text: str = "",
+    root: Path | None = None,
 ) -> str:
-    lineage = link_results or []
-    lineage_lines = ["- none recorded"]
-    if lineage:
-        lineage_lines = []
-        for result in lineage:
-            lineage_lines.append(
-                f"- {result.get('link_type', 'unknown')}: {result.get('source_path', '')} -> {format_list([str(path) for path in result.get('artifact_paths', []) or []])}"
-            )
+    if review_pack_text:
+        review_blocks = parse_review_theme_blocks(review_pack_text)
+        theme_names = [normalize_review_theme_label(block["title"]) for block in review_blocks]
+        literature_review = build_writeback_literature_review(review_pack_text)
+        tensions = read_section(review_pack_text, "Counter-Signals And Tensions") or "- 当前材料里未出现强 counter-signal，但这不代表 tension 已被消除。"
+        assumptions = read_section(review_pack_text, "Draft Assumptions") or "当前工作假设\n- 当前材料仍不足以形成更强假设。"
+        problem_statement = read_section(review_pack_text, "Draft Problem Statement") or build_bundle_problem_statement_from_theme_names(theme_names)
+        ux_section = build_bundle_ai_native_ux_section_from_theme_names(theme_names)
+    else:
+        clusters = collect_artifact_theme_clusters(
+            research_direction=direction_text,
+            artifact_paths=artifact_paths,
+            root=root or resolve_artifact_root(artifact_paths),
+        )
+        literature_review = build_bundle_literature_review(clusters)
+        tensions = "\n".join(build_artifact_tensions(clusters))
+        assumptions = build_bundle_assumptions_from_clusters(clusters)
+        problem_statement = build_bundle_problem_statement_from_clusters(clusters)
+        ux_section = build_bundle_ai_native_ux_section(clusters)
     intro = build_writeback_intro(
-        f"本轮 writeback 直接把 bundle 输出当作证据，而不是播客摘要。source_paths: {', '.join(source_paths) or 'none'}; artifact_paths: {', '.join(artifact_paths) or 'none'}.",
-        ["source_paths", "artifact_paths", "link_types"],
+        "本轮 writeback 先从 artifact 内容里挑出可引用证据，再按主题形成综述，最后才进入综合判断。",
+        build_ai_native_ux_lens_pack(),
     )
     return "\n".join(
         [
@@ -1421,15 +1619,33 @@ def render_writeback_from_bundle(
             f"- artifact_paths: {format_list(artifact_paths)}",
             f"- link_types: {format_list(link_types)}",
             "",
-            "## 主判断",
+            "## 研究问题",
             "",
-            build_writeback_problem(
-                "如何把 bundle 的真实 source_paths 和 artifact_paths 收束成一套可持续追踪的研究方向。"
-            ),
+            direction_text,
             "",
-            "## 评审视角",
+            "## 综述导言",
             "",
             intro,
+            "",
+            "## 文献综述",
+            "",
+            literature_review,
+            "",
+            "## 综合判断",
+            "",
+            build_writeback_problem(problem_statement),
+            "",
+            "## Problem Statement",
+            "",
+            problem_statement,
+            "",
+            "## Assumptions",
+            "",
+            assumptions,
+            "",
+            "## AI-native UX 视角",
+            "",
+            ux_section,
             "",
             "## 本轮 Research Direction",
             "",
@@ -1437,11 +1653,11 @@ def render_writeback_from_bundle(
             "",
             "## 证据锚点",
             "",
-            *lineage_lines,
+            "\n".join(f"- `{path}`" for path in artifact_paths) if artifact_paths else "- none recorded",
             "",
             "## 保留分歧",
             "",
-            "- 当前版本优先使用 reusable reporting builders 生成内容，而不是本地占位文本。",
+            tensions,
             "",
         ]
     )
@@ -1457,6 +1673,7 @@ def generate_real_review_pack(
     links: list[str],
     link_types: list[str],
     link_results: list[dict[str, object]] | None = None,
+    root: Path | None = None,
 ) -> str:
     return render_review_pack_from_bundle(
         bundle_id=bundle_id,
@@ -1467,6 +1684,7 @@ def generate_real_review_pack(
         links=links,
         link_types=link_types,
         link_results=link_results,
+        root=root,
     )
 
 
@@ -1480,6 +1698,8 @@ def generate_real_writeback(
     links: list[str],
     link_types: list[str],
     link_results: list[dict[str, object]] | None = None,
+    review_pack_text: str = "",
+    root: Path | None = None,
 ) -> str:
     return render_writeback_from_bundle(
         bundle_id=bundle_id,
@@ -1490,6 +1710,8 @@ def generate_real_writeback(
         links=links,
         link_types=link_types,
         link_results=link_results,
+        review_pack_text=review_pack_text,
+        root=root,
     )
 
 
