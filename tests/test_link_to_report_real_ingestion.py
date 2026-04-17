@@ -186,9 +186,13 @@ def test_non_official_web_links_fail_cleanly(tmp_path, monkeypatch):
 
 def test_propose_direction_uses_bundle_outputs_and_marks_pending(tmp_path):
     lib = load_link_to_report_lib_module()
+    workspace_root = tmp_path / "workspace"
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(lib, "ROOT", workspace_root)
+    monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
     bundle_id = "bundle-output-direction"
-    cleanup_bundle_outputs(lib, bundle_id)
     try:
+        cleanup_bundle_outputs(lib, bundle_id)
         bundle_dir = lib.bundle_dir(bundle_id)
         bundle_dir.mkdir(parents=True, exist_ok=True)
         (bundle_dir / "run-summary.md").write_text(
@@ -218,25 +222,15 @@ def test_propose_direction_uses_bundle_outputs_and_marks_pending(tmp_path):
             ),
             encoding="utf-8",
         )
-        result = subprocess.run(
-            [
-                sys.executable,
-                "scripts/link_to_report.py",
-                "propose-direction",
-                "--bundle-id",
-                bundle_id,
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, result.stderr
+        result = lib.command_propose_direction(argparse.Namespace(bundle_id=bundle_id, direction=""))
+        assert result == 0
         text = (bundle_dir / "direction.md").read_text(encoding="utf-8")
         assert "- direction_status: `system_suggested_pending`" in text
         assert "library/sources/podcasts/demo.md" in text
         assert "library/artifacts/podcasts/demo/transcript.md" in text
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
+        monkeypatch.undo()
 
 
 @pytest.mark.parametrize(

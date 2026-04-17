@@ -115,7 +115,7 @@ def read_markdown_list_field(text: str, field_name: str) -> list[str]:
         inner = line[len(prefix) : -1].strip()
         if not inner:
             return []
-        return [item.strip().strip("`") for item in inner.split(",") if item.strip()]
+        return re.findall(r"`([^`]*)`", inner)
     return []
 
 
