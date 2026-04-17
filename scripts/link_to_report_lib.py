@@ -104,6 +104,7 @@ def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
         if line.startswith("## ") and line != "## Per-Link Results":
             if any(item.strip() for item in current_block):
                 blocks.append(current_block)
+            current_block = []
             break
         if line.startswith("### Link Result"):
             if any(item.strip() for item in current_block):
@@ -135,7 +136,9 @@ def invoke_ingestion_adapter(adapter: object, link: str, force: bool) -> dict[st
     if not callable(adapter):
         raise TypeError("ingestion adapter must be callable")
     result = adapter(link, force=force)
-    return result if isinstance(result, dict) else None
+    if not isinstance(result, dict):
+        raise TypeError("ingestion adapter must return a dict result")
+    return result
 
 
 def render_link_result_block(result: dict[str, object] | str) -> str:
@@ -358,27 +361,14 @@ def command_ingest_links(args: argparse.Namespace) -> int:
             continue
 
         adapter_result = invoke_ingestion_adapter(adapter, link, args.force)
-        if isinstance(adapter_result, dict):
-            results.append(
-                {
-                    "link": str(adapter_result.get("link", link)),
-                    "link_type": str(adapter_result.get("link_type", link_type)),
-                    "status": str(adapter_result.get("status", "success")),
-                    "source_path": str(adapter_result.get("source_path", "")),
-                    "artifact_paths": [str(path) for path in adapter_result.get("artifact_paths", []) or []],
-                    "failure_reason": str(adapter_result.get("failure_reason", "")),
-                }
-            )
-            continue
-
         results.append(
             {
-                "link": link,
-                "link_type": link_type,
-                "status": "failed",
-                "source_path": "",
-                "artifact_paths": [],
-                "failure_reason": "adapter returned no structured result",
+                "link": str(adapter_result.get("link", link)),
+                "link_type": str(adapter_result.get("link_type", link_type)),
+                "status": str(adapter_result.get("status", "success")),
+                "source_path": str(adapter_result.get("source_path", "")),
+                "artifact_paths": [str(path) for path in adapter_result.get("artifact_paths", []) or []],
+                "failure_reason": str(adapter_result.get("failure_reason", "")),
             }
         )
 

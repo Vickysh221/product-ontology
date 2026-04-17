@@ -73,3 +73,24 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     assert "### Link Result 1" not in text
     for line in ["- link_count:", "- link_types:", "- links:", "- successful_links:", "- failed_links:", "## Link Results"]:
         assert line not in text
+
+
+def test_command_ingest_links_rejects_non_dict_adapter_results(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setattr(lib, "ROOT", workspace_root)
+    monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", workspace_root / "library" / "sessions" / "link-to-report")
+    monkeypatch.setattr(lib, "detect_link_type", lambda _: "podcast")
+
+    def bad_adapter(link_url: str, force: bool = False):
+        return ("not", "a", "dict")
+
+    monkeypatch.setattr(lib, "INGESTION_ADAPTERS", {"podcast": bad_adapter})
+
+    try:
+        lib.command_ingest_links(
+            argparse.Namespace(links=["https://podcasts.apple.com/us/podcast/example/id123"], bundle_id="demo", dry_run=False, force=False)
+        )
+        assert False, "expected TypeError"
+    except TypeError as exc:
+        assert "return a dict" in str(exc)

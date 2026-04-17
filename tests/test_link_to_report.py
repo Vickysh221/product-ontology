@@ -218,6 +218,42 @@ def test_generate_report_blocks_pending_direction_from_file(tmp_path):
         cleanup_bundle_outputs(lib, bundle_id)
 
 
+def test_parse_link_result_blocks_ignores_trailing_sections():
+    lib = load_link_to_report_lib_module()
+    text = "\n".join(
+        [
+            "# Link Bundle Run Summary",
+            "",
+            "- bundle_id: `demo`",
+            "- dry_run: `false`",
+            "- successful_link_count: `1`",
+            "- failed_link_count: `0`",
+            "- source_paths: [`library/sources/podcasts/demo.md`]",
+            "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+            "",
+            "## Per-Link Results",
+            "",
+            "### Link Result",
+            "",
+            "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+            "- link_type: `podcast`",
+            "- status: `success`",
+            "- source_path: `library/sources/podcasts/demo.md`",
+            "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+            "- failure_reason: ``",
+            "",
+            "## Counter-Signals And Tensions",
+            "",
+            "- MVP 占位",
+            "",
+        ]
+    )
+    results = lib.parse_link_result_blocks(text)
+    assert len(results) == 1
+    assert results[0]["link"] == "https://podcasts.apple.com/us/podcast/example/id123"
+    assert results[0]["status"] == "success"
+
+
 def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
     lib = load_link_to_report_lib_module()
     bundle_id = "task-1-bundle"
