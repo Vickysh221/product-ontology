@@ -394,8 +394,10 @@ def command_generate_report(args: argparse.Namespace) -> int:
         return 2
 
     summary_text = summary_path.read_text(encoding="utf-8")
-    links = read_markdown_list_field(summary_text, "links")
-    link_types = read_markdown_list_field(summary_text, "link_types")
+    # Task 1 summaries only guarantee the ingestion result contract, so later
+    # report generation must tolerate missing link aggregation fields.
+    links = read_markdown_list_field(summary_text, "links") or []
+    link_types = read_markdown_list_field(summary_text, "link_types") or []
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":
         print("system_suggested_pending directions must be approved before generate-report", file=sys.stderr)

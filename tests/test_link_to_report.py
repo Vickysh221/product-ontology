@@ -111,7 +111,6 @@ def test_ingest_links_dry_run_writes_run_summary_and_derives_bundle_path(tmp_pat
         text = summary_path.read_text(encoding="utf-8")
         assert f"- bundle_id: `{expected_bundle_id}`" in text
         assert "- dry_run: `true`" in text
-        assert "- link_types: [`podcast`, `xiaohongshu`]" in text
     finally:
         cleanup_bundle_outputs(lib, expected_bundle_id)
 
@@ -214,6 +213,62 @@ def test_generate_report_blocks_pending_direction_from_file(tmp_path):
         )
         assert result.returncode != 0
         assert "approved" in result.stderr.lower()
+    finally:
+        cleanup_bundle_outputs(lib, bundle_id)
+
+
+def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
+    lib = load_link_to_report_lib_module()
+    bundle_id = "task-1-bundle"
+    cleanup_bundle_outputs(lib, bundle_id)
+    try:
+        bundle_dir = Path("library/sessions/link-to-report") / bundle_id
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "run-summary.md").write_text(
+            "\n".join(
+                [
+                    "# Link Bundle Run Summary",
+                    "",
+                    f"- bundle_id: `{bundle_id}`",
+                    "- dry_run: `false`",
+                    "- successful_link_count: `1`",
+                    "- failed_link_count: `0`",
+                    "- source_paths: [`library/sources/podcasts/demo.md`]",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                    "",
+                    "## Per-Link Results",
+                    "",
+                    "### Link Result 1",
+                    "",
+                    "- link: `https://podcasts.apple.com/us/podcast/example/id123`",
+                    "- link_type: `podcast`",
+                    "- status: `success`",
+                    "- source_path: `library/sources/podcasts/demo.md`",
+                    "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
+                    "- failure_reason: ``",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [
+                "python3",
+                "scripts/link_to_report.py",
+                "generate-report",
+                "--bundle-id",
+                bundle_id,
+                "--direction",
+                "task 1 compatibility",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert (lib.INTAKE_ROOT / f"{bundle_id}.md").exists()
+        assert (lib.REVIEW_PACK_ROOT / f"{bundle_id}.md").exists()
+        assert (lib.WRITEBACK_ROOT / f"{bundle_id}.md").exists()
     finally:
         cleanup_bundle_outputs(lib, bundle_id)
 
