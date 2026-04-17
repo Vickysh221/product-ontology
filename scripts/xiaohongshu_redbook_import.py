@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from source_ingest import ROOT, write_artifact_record, write_source_record
+from source_ingest import ROOT, build_source_slug, write_artifact_record, write_source_record
 
 
 SEED_FILE = ROOT / "seed" / "xiaohongshu-sources.yaml"
@@ -18,6 +18,10 @@ def load_text(body: str, body_file: str) -> str:
     if body_file:
         return Path(body_file).read_text(encoding="utf-8")
     return body
+
+
+def canonical_slug_from_url(note_url: str) -> str:
+    return build_source_slug(note_url)
 
 
 def add_target(args: argparse.Namespace) -> int:
@@ -90,6 +94,28 @@ def import_note(args: argparse.Namespace) -> int:
         )
         print(comment_artifact.relative_to(ROOT))
     return 0
+
+
+def import_note_url(note_url: str, *, force: bool = False) -> str:
+    slug = canonical_slug_from_url(note_url)
+    source_path = ROOT / "library" / "sources" / "xiaohongshu" / f"{slug}.md"
+    if source_path.exists() and not force:
+        return slug
+
+    args = argparse.Namespace(
+        source_label=slug,
+        title=slug,
+        note_url=note_url,
+        author="unknown",
+        published_at="unknown",
+        perspective="creator_commentary",
+        body="",
+        body_file="",
+        comments_body="",
+        comments_file="",
+    )
+    pull_with_redbook(args)
+    return slug
 
 
 def import_redbook_json(args: argparse.Namespace) -> int:

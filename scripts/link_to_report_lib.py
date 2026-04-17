@@ -7,6 +7,10 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+from podcast_import import import_episode
+from source_ingest import write_artifact_record, write_source_record
+from xiaohongshu_redbook_import import import_note_url
+
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_TO_REPORT_ROOT = ROOT / "library" / "sessions" / "link-to-report"
@@ -132,6 +136,34 @@ def parse_link_result_blocks(text: str) -> list[dict[str, object]]:
     return results
 
 
+def load_official_target_urls() -> list[str]:
+    official_sources_file = ROOT / "seed" / "official-sources.yaml"
+    if not official_sources_file.exists():
+        return []
+    targets: list[str] = []
+    for line in official_sources_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("url: "):
+            continue
+        target = stripped.split("url:", 1)[1].strip()
+        if target and not target.startswith("manual://"):
+            targets.append(target)
+    return targets
+
+
+def is_official_target(link: str) -> bool:
+    normalized = link.strip().rstrip("/")
+    for target in load_official_target_urls():
+        target_normalized = target.strip().rstrip("/")
+        if normalized == target_normalized or normalized.startswith(f"{target_normalized}/"):
+            return True
+    return False
+
+
+def to_repo_relative(path: Path) -> str:
+    return str(path.relative_to(ROOT))
+
+
 def validate_ingestion_adapter_result(result: object, link: str, link_type: str) -> dict[str, object]:
     if not isinstance(result, dict):
         raise TypeError("ingestion adapter must return a dict result")
@@ -167,6 +199,89 @@ def invoke_ingestion_adapter(adapter: object, link: str, force: bool, link_type:
         raise TypeError("ingestion adapter must be callable")
     result = adapter(link, force=force)
     return validate_ingestion_adapter_result(result, link, link_type)
+
+
+def ingest_podcast_link(link: str, *, force: bool) -> dict[str, object]:
+    slug = import_episode(link, force=force)
+    source_path = ROOT / "library" / "sources" / "podcasts" / f"{slug}.md"
+    artifact_root = ROOT / "library" / "artifacts" / "podcasts" / slug
+    return {
+        "link": link,
+        "link_type": "podcast",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": [
+            to_repo_relative(artifact_root / "transcript.md"),
+            to_repo_relative(artifact_root / "summary.md"),
+            to_repo_relative(artifact_root / "highlights.md"),
+        ],
+        "failure_reason": "",
+    }
+
+
+def ingest_xiaohongshu_link(link: str, *, force: bool) -> dict[str, object]:
+    slug = import_note_url(link, force=force)
+    source_path = ROOT / "library" / "sources" / "xiaohongshu" / f"{slug}.md"
+    artifact_root = ROOT / "library" / "artifacts" / "xiaohongshu" / slug
+    artifact_paths = [to_repo_relative(artifact_root / "full_text.md")]
+    for optional_name in ("transcript.md", "comment_batch.md"):
+        optional_path = artifact_root / optional_name
+        if optional_path.exists():
+            artifact_paths.append(to_repo_relative(optional_path))
+    return {
+        "link": link,
+        "link_type": "xiaohongshu",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": artifact_paths,
+        "failure_reason": "",
+    }
+
+
+def ingest_official_link(link: str, *, force: bool) -> dict[str, object]:
+    if not is_official_target(link):
+        raise ValueError("non-official web url is unsupported in this phase")
+
+    _source_id, source_path, _artifact_dir = write_source_record(
+        channel="official",
+        source_label=link,
+        url=link,
+        source_type="official_release",
+        ingestion_method="link_to_report",
+        publisher=urlparse(link).netloc or "unknown",
+        author_or_speaker="unknown",
+        published_at="unknown",
+        title=link,
+        canonical_url=link,
+        perspective="first_hand_official",
+        confidence="high",
+        notes=["Official page imported through link-to-report."],
+    )
+    artifact_path = write_artifact_record(
+        channel="official",
+        source_label=link,
+        source_url=link,
+        slice_type="full_text",
+        location="full_text",
+        perspective="official_release",
+        why_relevant="Stores the official page content for later extraction.",
+        body=f"Official source ingested through link-to-report.\n\nSource URL: {link}",
+    )
+    return {
+        "link": link,
+        "link_type": "web",
+        "status": "success",
+        "source_path": to_repo_relative(source_path),
+        "artifact_paths": [to_repo_relative(artifact_path)],
+        "failure_reason": "",
+    }
+
+
+INGESTION_ADAPTERS = {
+    "podcast": ingest_podcast_link,
+    "xiaohongshu": ingest_xiaohongshu_link,
+    "web": ingest_official_link,
+}
 
 
 def render_link_result_block(result: dict[str, object] | str) -> str:

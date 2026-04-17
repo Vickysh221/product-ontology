@@ -29,6 +29,10 @@ def slugify(value: str) -> str:
     return f"{normalized}-{digest}"
 
 
+def build_source_slug(source_url: str) -> str:
+    return slugify(source_url)
+
+
 def guess_publisher(url: str) -> str:
     return re.sub(r"^www\.", "", urlparse(url).netloc.lower()) or "unknown"
 
