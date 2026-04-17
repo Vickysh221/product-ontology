@@ -232,7 +232,7 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
                     f"- bundle_id: `{bundle_id}`",
                     "- dry_run: `false`",
                     "- successful_link_count: `1`",
-                    "- failed_link_count: `0`",
+                    "- failed_link_count: `1`",
                     "- source_paths: [`library/sources/podcasts/demo.md`]",
                     "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
                     "",
@@ -246,6 +246,15 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
                     "- source_path: `library/sources/podcasts/demo.md`",
                     "- artifact_paths: [`library/artifacts/podcasts/demo/transcript.md`]",
                     "- failure_reason: ``",
+                    "",
+                    "### Link Result",
+                    "",
+                    "- link: `https://mp.weixin.qq.com/s/example`",
+                    "- link_type: `wechat`",
+                    "- status: `failed`",
+                    "- source_path: ``",
+                    "- artifact_paths: []",
+                    "- failure_reason: `unsupported link type: wechat`",
                     "",
                 ]
             ),
@@ -271,7 +280,9 @@ def test_generate_report_accepts_task_1_run_summary_shape(tmp_path):
         writeback_text = (lib.WRITEBACK_ROOT / f"{bundle_id}.md").read_text(encoding="utf-8")
         assert "- link_count: `1`" in intake_text
         assert "- link_types: [`podcast`]" in intake_text
+        assert "https://mp.weixin.qq.com/s/example" not in intake_text
         assert "https://podcasts.apple.com/us/podcast/example/id123" in review_pack_text
+        assert "https://mp.weixin.qq.com/s/example" not in review_pack_text
         assert "- link_types: [`podcast`]" in review_pack_text
         assert "- link_types: [`podcast`]" in writeback_text
     finally:

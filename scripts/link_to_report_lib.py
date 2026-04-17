@@ -350,7 +350,7 @@ def command_ingest_links(args: argparse.Namespace) -> int:
             )
             continue
 
-        adapter_result = adapter(link, bundle_id)
+        adapter_result = adapter(link, force=args.force)
         if isinstance(adapter_result, dict):
             results.append(
                 {
@@ -437,9 +437,10 @@ def command_generate_report(args: argparse.Namespace) -> int:
 
     summary_text = summary_path.read_text(encoding="utf-8")
     link_results = parse_link_result_blocks(summary_text)
-    links = [str(result.get("link", "")) for result in link_results if str(result.get("link", ""))]
+    successful_results = [result for result in link_results if str(result.get("status", "")) == "success"]
+    links = [str(result.get("link", "")) for result in successful_results if str(result.get("link", ""))]
     link_types = sorted(
-        {str(result.get("link_type", "")) for result in link_results if str(result.get("link_type", ""))}
+        {str(result.get("link_type", "")) for result in successful_results if str(result.get("link_type", ""))}
     )
     direction_text, direction_status = load_direction_input(args)
     if direction_status == "system_suggested_pending":

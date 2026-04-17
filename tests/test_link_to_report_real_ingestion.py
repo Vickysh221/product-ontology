@@ -23,9 +23,10 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     monkeypatch.setattr(lib, "LINK_TO_REPORT_ROOT", link_root)
     monkeypatch.setattr(lib, "detect_link_type", lambda _: "podcast")
 
-    def ingest_podcast_link(link_url: str, bundle_name: str):
-        source_path = workspace_root / "library" / "sources" / "podcasts" / f"{bundle_name}.md"
-        artifact_path = workspace_root / "library" / "artifacts" / "podcasts" / bundle_name / "transcript.md"
+    def ingest_podcast_link(link_url: str, force: bool = False):
+        assert force is False
+        source_path = workspace_root / "library" / "sources" / "podcasts" / "demo.md"
+        artifact_path = workspace_root / "library" / "artifacts" / "podcasts" / "demo" / "transcript.md"
         source_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         source_path.write_text("# source\n", encoding="utf-8")
@@ -42,7 +43,7 @@ def test_run_summary_records_real_link_results(tmp_path, monkeypatch):
     monkeypatch.setattr(lib, "INGESTION_ADAPTERS", {"podcast": ingest_podcast_link})
 
     result = lib.command_ingest_links(
-        argparse.Namespace(links=[link], bundle_id=bundle_id, dry_run=False)
+        argparse.Namespace(links=[link], bundle_id=bundle_id, dry_run=False, force=False)
     )
 
     assert result == 0
