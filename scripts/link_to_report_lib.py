@@ -48,11 +48,15 @@ source_ingest = load_script_module("source_ingest.py", "source_ingest")
 podcast_import = load_script_module("podcast_import.py", "podcast_import")
 xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
 writeback_generate = load_script_module("writeback_generate.py", "writeback_generate")
+web_discovery = load_script_module("web_discovery.py", "web_discovery")
 
 import_episode = podcast_import.import_episode
 write_artifact_record = source_ingest.write_artifact_record
 write_source_record = source_ingest.write_source_record
 import_note_url = xiaohongshu_redbook_import.import_note_url
+normalize_source_candidate = web_discovery.normalize_source_candidate
+render_discovery_record = web_discovery.render_discovery_record
+build_discovery_candidates = web_discovery.build_discovery_candidates
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -151,138 +155,6 @@ def build_proposed_direction_from_bundle_outputs(link_results: list[dict[str, ob
             "这些线索是否共同指向协作边界、责任边界或工作流结构的变化？"
         )
     return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
-
-
-def normalize_source_candidate(
-    *,
-    title: str,
-    url: str,
-    source_type: str,
-    platform: str,
-    authority: str,
-    why_relevant: str,
-) -> dict[str, str]:
-    return {
-        "title": title.strip(),
-        "url": url.strip(),
-        "source_type": source_type.strip(),
-        "platform": platform.strip(),
-        "authority": authority.strip(),
-        "why_relevant": why_relevant.strip(),
-    }
-
-
-def render_discovery_record(
-    *,
-    request_id: str,
-    mode: str,
-    topic: str,
-    candidates: list[dict[str, str]],
-) -> str:
-    grouped: dict[str, list[dict[str, str]]] = {}
-    for candidate in candidates:
-        grouped.setdefault(candidate["authority"], []).append(candidate)
-
-    sections: list[str] = [
-        "# Web Discovery Record",
-        "",
-        f"- request_id: `{request_id}`",
-        f"- mode: `{mode}`",
-        f"- topic: `{topic}`",
-        "",
-    ]
-    title_map = {
-        "official": "Official",
-        "first_hand_operator": "First-Hand Operator",
-        "structured_commentary": "Structured Commentary",
-        "social_signal": "Social Signal",
-    }
-    for authority in ["official", "first_hand_operator", "structured_commentary", "social_signal"]:
-        items = grouped.get(authority, [])
-        if not items:
-            continue
-        sections.extend([f"## {title_map[authority]}", ""])
-        for item in items:
-            sections.extend(
-                [
-                    f"- [{item['title']}]({item['url']})",
-                    f"  - source_type: `{item['source_type']}`",
-                    f"  - platform: `{item['platform']}`",
-                    f"  - why_relevant: {item['why_relevant']}",
-                ]
-            )
-        sections.append("")
-    return "\n".join(sections)
-
-
-def build_discovery_candidates(topic: str, mode: str, brands: list[str]) -> list[dict[str, str]]:
-    normalized_brands = [brand.strip() for brand in brands if brand.strip()]
-    candidates: list[dict[str, str]] = []
-    topic_slug = slugify_bundle_id(topic)
-
-    if mode == "official-update":
-        titles = normalized_brands or [topic]
-        for title in titles:
-            candidates.append(
-                normalize_source_candidate(
-                    title=f"{title} Official Update",
-                    url=f"manual://official/{slugify_bundle_id(title)}",
-                    source_type="official_update",
-                    platform="official_site",
-                    authority="official",
-                    why_relevant=f"Official update candidate for {title} in topic {topic}.",
-                )
-            )
-        return candidates
-
-    if mode == "research-guided-collection":
-        titles = normalized_brands or [topic]
-        for title in titles:
-            candidates.append(
-                normalize_source_candidate(
-                    title=f"{title} Structured Commentary",
-                    url=f"manual://research/{slugify_bundle_id(title)}",
-                    source_type="structured_commentary",
-                    platform="web",
-                    authority="structured_commentary",
-                    why_relevant=f"Research-guided commentary candidate for {title} in topic {topic}.",
-                )
-            )
-        if not candidates:
-            candidates.append(
-                normalize_source_candidate(
-                    title=f"{topic} Social Signal",
-                    url=f"manual://social/{topic_slug}",
-                    source_type="social_signal",
-                    platform="web",
-                    authority="social_signal",
-                    why_relevant=f"Social signal candidate for topic {topic}.",
-                )
-            )
-        return candidates
-
-    candidates.append(
-        normalize_source_candidate(
-            title=f"{topic} Structured Commentary",
-            url=f"manual://discovery/{topic_slug}",
-            source_type="structured_commentary",
-            platform="web",
-            authority="structured_commentary",
-            why_relevant=f"Discovery candidate for topic {topic}.",
-        )
-    )
-    for brand in normalized_brands:
-        candidates.append(
-            normalize_source_candidate(
-                title=f"{brand} Social Signal",
-                url=f"manual://social/{slugify_bundle_id(brand)}",
-                source_type="social_signal",
-                platform="web",
-                authority="social_signal",
-                why_relevant=f"Discovery signal around {brand} for topic {topic}.",
-            )
-        )
-    return candidates
 
 
 def command_discover_web(args: argparse.Namespace) -> int:

@@ -62,3 +62,18 @@ def test_render_discovery_record_groups_candidates_by_authority():
     assert "## Structured Commentary" in text
     assert "Apple Intelligence" in text
     assert "AI 手机综述" in text
+
+
+def test_build_discovery_candidates_supports_mode_specific_outputs():
+    mod = load_web_discovery()
+
+    official = mod.build_discovery_candidates("AI 手机", "official-update", ["Apple"])
+    guided = mod.build_discovery_candidates("AI 手机", "research-guided-collection", ["Google"])
+    generic = mod.build_discovery_candidates("AI 手机", "discovery", ["Honor"])
+
+    assert official[0]["authority"] == "official"
+    assert official[0]["source_type"] == "official_update"
+    assert guided[0]["authority"] == "structured_commentary"
+    assert guided[0]["source_type"] == "structured_commentary"
+    assert generic[0]["authority"] == "structured_commentary"
+    assert any(item["authority"] == "social_signal" for item in generic)

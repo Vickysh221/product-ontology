@@ -99,3 +99,79 @@ def build_seeded_discovery_candidates(topic: str, seed_path: str | Path = "seed/
             }
         )
     return candidates
+
+
+def _slugify(value: str) -> str:
+    normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in value.strip())
+    normalized = "-".join(part for part in normalized.split("-") if part)
+    return normalized or "bundle"
+
+
+def build_discovery_candidates(topic: str, mode: str, brands: list[str]) -> list[dict[str, str]]:
+    normalized_brands = [brand.strip() for brand in brands if brand.strip()]
+    candidates: list[dict[str, str]] = []
+    topic_slug = _slugify(topic)
+
+    if mode == "official-update":
+        titles = normalized_brands or [topic]
+        for title in titles:
+            candidates.append(
+                normalize_source_candidate(
+                    title=f"{title} Official Update",
+                    url=f"manual://official/{_slugify(title)}",
+                    source_type="official_update",
+                    platform="official_site",
+                    authority="official",
+                    why_relevant=f"Official update candidate for {title} in topic {topic}.",
+                )
+            )
+        return candidates
+
+    if mode == "research-guided-collection":
+        titles = normalized_brands or [topic]
+        for title in titles:
+            candidates.append(
+                normalize_source_candidate(
+                    title=f"{title} Structured Commentary",
+                    url=f"manual://research/{_slugify(title)}",
+                    source_type="structured_commentary",
+                    platform="web",
+                    authority="structured_commentary",
+                    why_relevant=f"Research-guided commentary candidate for {title} in topic {topic}.",
+                )
+            )
+        if not candidates:
+            candidates.append(
+                normalize_source_candidate(
+                    title=f"{topic} Social Signal",
+                    url=f"manual://social/{topic_slug}",
+                    source_type="social_signal",
+                    platform="web",
+                    authority="social_signal",
+                    why_relevant=f"Social signal candidate for topic {topic}.",
+                )
+            )
+        return candidates
+
+    candidates.append(
+        normalize_source_candidate(
+            title=f"{topic} Structured Commentary",
+            url=f"manual://discovery/{topic_slug}",
+            source_type="structured_commentary",
+            platform="web",
+            authority="structured_commentary",
+            why_relevant=f"Discovery candidate for topic {topic}.",
+        )
+    )
+    for brand in normalized_brands:
+        candidates.append(
+            normalize_source_candidate(
+                title=f"{brand} Social Signal",
+                url=f"manual://social/{_slugify(brand)}",
+                source_type="social_signal",
+                platform="web",
+                authority="social_signal",
+                why_relevant=f"Discovery signal around {brand} for topic {topic}.",
+            )
+        )
+    return candidates
