@@ -209,6 +209,21 @@ Current behavior:
   - `library/review-packs/link-to-report/<bundle-id>.md`
   - `library/writebacks/link-to-report/<bundle-id>.md`
 
+## Web Discovery And Source Selection
+
+Use discovery when you want to start from a topic or brand before you ingest URLs:
+
+```bash
+python3 scripts/link_to_report.py discover-web --request-id ai-phone --mode discovery --topic "AI 手机"
+python3 scripts/link_to_report.py approve-sources --request-id ai-phone --bundle-id ai-phone-bundle https://www.apple.com/apple-intelligence/
+python3 scripts/link_to_report.py propose-direction --bundle-id ai-phone-bundle
+python3 scripts/link_to_report.py generate-report --bundle-id ai-phone-bundle --direction-file library/sessions/link-to-report/ai-phone-bundle/direction.md
+```
+
+The discovery stage writes a reviewed candidate record under `library/sessions/web-discovery/`.
+`approve-sources` hands the approved URLs directly into the existing `ingest-links` pipeline.
+Discovery does not bypass the `Source -> Artifact -> Review Pack -> Writeback` chain.
+
 Current scope:
 - This is the short-term manual-links path only.
 - The current MVP proves the end-to-end chain and field contract with real ingestion adapters for podcast and Xiaohongshu inputs.
