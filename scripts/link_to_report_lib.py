@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_TO_REPORT_ROOT = ROOT / "library" / "sessions" / "link-to-report"
+DISCOVERY_ROOT = ROOT / "library" / "sessions" / "web-discovery"
 INTAKE_ROOT = ROOT / "library" / "writeback-intakes" / "link-to-report"
 REVIEW_PACK_ROOT = ROOT / "library" / "review-packs" / "link-to-report"
 WRITEBACK_ROOT = ROOT / "library" / "writebacks" / "link-to-report"
@@ -47,11 +48,15 @@ source_ingest = load_script_module("source_ingest.py", "source_ingest")
 podcast_import = load_script_module("podcast_import.py", "podcast_import")
 xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
 writeback_generate = load_script_module("writeback_generate.py", "writeback_generate")
+web_discovery = load_script_module("web_discovery.py", "web_discovery")
 
 import_episode = podcast_import.import_episode
 write_artifact_record = source_ingest.write_artifact_record
 write_source_record = source_ingest.write_source_record
 import_note_url = xiaohongshu_redbook_import.import_note_url
+normalize_source_candidate = web_discovery.normalize_source_candidate
+render_discovery_record = web_discovery.render_discovery_record
+build_discovery_candidates = web_discovery.build_discovery_candidates
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -100,6 +105,12 @@ def format_list(values: list[str]) -> str:
     return "[" + ", ".join(f"`{value}`" for value in values) + "]"
 
 
+def parse_csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def read_markdown_field(text: str, field_name: str) -> str:
     prefix = f"- {field_name}: `"
     for line in text.splitlines():
@@ -144,6 +155,41 @@ def build_proposed_direction_from_bundle_outputs(link_results: list[dict[str, ob
             "这些线索是否共同指向协作边界、责任边界或工作流结构的变化？"
         )
     return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+
+
+def command_discover_web(args: argparse.Namespace) -> int:
+    request_id = slugify_bundle_id(args.request_id)
+    brands = parse_csv(getattr(args, "brands", ""))
+    candidates = build_discovery_candidates(args.topic, args.mode, brands)
+    record = render_discovery_record(
+        request_id=request_id,
+        mode=args.mode,
+        topic=args.topic,
+        candidates=candidates,
+    )
+    path = DISCOVERY_ROOT / request_id / "discovery.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(record, encoding="utf-8")
+    try:
+        print(path.relative_to(ROOT))
+    except ValueError:
+        print(path)
+    return 0
+
+
+def command_approve_sources(args: argparse.Namespace) -> int:
+    urls = [url.strip() for url in getattr(args, "urls", []) if url.strip()]
+    if not urls:
+        print("urls are required for approve-sources", file=sys.stderr)
+        return 2
+    return command_ingest_links(
+        argparse.Namespace(
+            links=urls,
+            bundle_id=args.bundle_id,
+            force=False,
+            dry_run=False,
+        )
+    )
 
 
 def parse_link_result_blocks(text: str) -> list[dict[str, object]]:

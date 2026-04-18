@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 
 from link_to_report_lib import (
+    command_approve_sources,
+    command_discover_web,
     command_generate_report,
     command_ingest_links,
     command_propose_direction,
@@ -22,6 +24,27 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--bundle-id", default="")
     ingest.add_argument("--force", action="store_true")
     ingest.add_argument("--dry-run", action="store_true")
+
+    discover = subparsers.add_parser(
+        "discover-web",
+        help="Create a discovery record for a topic or brand.",
+    )
+    discover.add_argument("--request-id", required=True)
+    discover.add_argument(
+        "--mode",
+        choices=["discovery", "official-update", "research-guided-collection"],
+        default="discovery",
+    )
+    discover.add_argument("--topic", required=True)
+    discover.add_argument("--brands", default="")
+
+    approve = subparsers.add_parser(
+        "approve-sources",
+        help="Approve selected candidate URLs into a link bundle.",
+    )
+    approve.add_argument("--request-id", required=True)
+    approve.add_argument("--bundle-id", required=True)
+    approve.add_argument("urls", nargs="+")
 
     propose = subparsers.add_parser(
         "propose-direction",
@@ -53,6 +76,10 @@ def main() -> int:
     args = build_parser().parse_args()
     if args.command == "ingest-links":
         return command_ingest_links(args)
+    if args.command == "discover-web":
+        return command_discover_web(args)
+    if args.command == "approve-sources":
+        return command_approve_sources(args)
     if args.command == "propose-direction":
         return command_propose_direction(args)
     if args.command == "generate-report":

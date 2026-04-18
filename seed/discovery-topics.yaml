@@ -1,0 +1,20 @@
+domains:
+  - ai手机
+  - agent手机
+  - agentos
+  - 具身智能
+
+brands:
+  - Apple
+  - Google
+  - Samsung
+  - Xiaomi
+  - Honor
+  - OPPO
+  - vivo
+  - Huawei
+
+preferred_source_types:
+  - official_update
+  - structured_commentary
+  - social_signal

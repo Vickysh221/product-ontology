@@ -1,3 +1,4 @@
+import argparse
 import sys
 import importlib.util
 from pathlib import Path
@@ -33,6 +34,18 @@ def test_link_to_report_help_lists_three_subcommands():
     assert "ingest-links" in result.stdout
     assert "propose-direction" in result.stdout
     assert "generate-report" in result.stdout
+
+
+def test_link_to_report_help_shows_discovery_commands():
+    result = subprocess.run(
+        [sys.executable, "scripts/link_to_report.py", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "discover-web" in result.stdout
+    assert "approve-sources" in result.stdout
 
 
 def test_ingest_links_requires_at_least_one_link():
@@ -85,6 +98,62 @@ def test_link_to_report_helpers_normalize_bundle_paths():
     assert lib.direction_path("demo-bundle") == lib.LINK_TO_REPORT_ROOT / "demo-bundle" / "direction.md"
 
 
+def test_render_discovery_record_groups_candidates_by_authority():
+    lib = load_link_to_report_lib_module()
+    text = lib.render_discovery_record(
+        request_id="ai-phone-demo",
+        mode="discovery",
+        topic="AI 手机",
+        candidates=[
+            {
+                "title": "Apple Intelligence",
+                "url": "https://www.apple.com/apple-intelligence/",
+                "source_type": "official_update",
+                "platform": "official_site",
+                "authority": "official",
+                "why_relevant": "Official product framing.",
+            },
+            {
+                "title": "AI 手机综述",
+                "url": "https://example.com/ai-phone-overview",
+                "source_type": "structured_commentary",
+                "platform": "web",
+                "authority": "structured_commentary",
+                "why_relevant": "Cross-vendor comparison.",
+            },
+        ],
+    )
+
+    assert "# Web Discovery Record" in text
+    assert "## Official" in text
+    assert "## Structured Commentary" in text
+    assert "Apple Intelligence" in text
+    assert "AI 手机综述" in text
+
+
+def test_command_discover_web_writes_discovery_record(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    discovery_root = tmp_path / "library" / "sessions" / "web-discovery"
+    monkeypatch.setattr(lib, "DISCOVERY_ROOT", discovery_root)
+
+    result = lib.command_discover_web(
+        argparse.Namespace(
+            request_id="ai-phone-demo",
+            mode="research-guided-collection",
+            topic="AI 手机",
+            brands="Apple, Google",
+        )
+    )
+
+    assert result == 0
+    record_path = discovery_root / "ai-phone-demo" / "discovery.md"
+    assert record_path.exists()
+    text = record_path.read_text(encoding="utf-8")
+    assert "- request_id: `ai-phone-demo`" in text
+    assert "- mode: `research-guided-collection`" in text
+    assert "## Structured Commentary" in text
+
+
 def test_ingest_links_dry_run_writes_run_summary_and_derives_bundle_path(tmp_path):
     lib = load_link_to_report_lib_module()
     links = [
@@ -114,6 +183,45 @@ def test_ingest_links_dry_run_writes_run_summary_and_derives_bundle_path(tmp_pat
         assert "- dry_run: `true`" in text
     finally:
         cleanup_bundle_outputs(lib, expected_bundle_id)
+
+
+def test_approve_sources_hands_urls_to_ingest_bundle(monkeypatch):
+    lib = load_link_to_report_lib_module()
+    captured = {}
+
+    def fake_command_ingest_links(args):
+        captured["links"] = args.links
+        captured["bundle_id"] = args.bundle_id
+        return 0
+
+    monkeypatch.setattr(lib, "command_ingest_links", fake_command_ingest_links)
+
+    result = lib.command_approve_sources(
+        argparse.Namespace(
+            request_id="ai-phone-demo",
+            bundle_id="ai-phone-bundle",
+            urls=["https://www.apple.com/apple-intelligence/"],
+        )
+    )
+
+    assert result == 0
+    assert captured["bundle_id"] == "ai-phone-bundle"
+    assert captured["links"] == ["https://www.apple.com/apple-intelligence/"]
+
+
+def test_approve_sources_rejects_empty_urls(capsys):
+    lib = load_link_to_report_lib_module()
+    result = lib.command_approve_sources(
+        argparse.Namespace(
+            request_id="ai-phone-demo",
+            bundle_id="ai-phone-bundle",
+            urls=[],
+        )
+    )
+
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "urls are required for approve-sources" in captured.err
 
 
 def test_propose_direction_writes_default_direction_record(tmp_path):
