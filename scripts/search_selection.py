@@ -50,6 +50,30 @@ def _authority_level(candidate: dict[str, Any]) -> str:
     return str(candidate.get("authority_level") or candidate.get("authority") or "social_signal")
 
 
+def _authority_bonus(candidate: dict[str, Any], watch_profile: dict[str, Any]) -> int:
+    rules = watch_profile.get("authority_rules", {}) or {}
+    bonus = 0
+
+    speaker_role = str(candidate.get("speaker_role") or "").strip()
+    if speaker_role:
+        bonus += int((rules.get("speaker_roles", {}) or {}).get(speaker_role, 0))
+
+    authority_type = str(candidate.get("authority_rule_type") or candidate.get("source_type") or "").strip()
+    if authority_type:
+        bonus += int((rules.get("source_types", {}) or {}).get(authority_type, 0))
+
+    preferred_sources = watch_profile.get("preferred_sources", {}) or {}
+    channel_name = str(candidate.get("channel_name") or candidate.get("podcast_name") or "").strip()
+    if channel_name and channel_name in list(preferred_sources.get("channels", []) or []):
+        bonus += int(rules.get("preferred_channel_bonus", 0))
+
+    speaker_name = str(candidate.get("speaker_name") or candidate.get("author") or "").strip()
+    if speaker_name and speaker_name in list(preferred_sources.get("speakers", []) or []):
+        bonus += int(rules.get("preferred_speaker_bonus", 0))
+
+    return bonus
+
+
 def _evidence_richness(candidate: dict[str, Any]) -> int:
     score = 0
     if candidate.get("has_transcript"):
@@ -78,7 +102,7 @@ def score_candidate(
     topic_matches = _topic_matches(text, topic, research_direction, watch_profile)
     ontology_matches = _ontology_matches(text)
     authority_level = _authority_level(candidate)
-    authority_score = AUTHORITY_SCORES.get(authority_level, 0)
+    authority_score = AUTHORITY_SCORES.get(authority_level, 0) + _authority_bonus(candidate, watch_profile)
     evidence_richness = _evidence_richness(candidate)
     hype_penalty, downgrade_reasons = _hype_penalty(text, watch_profile)
 
@@ -109,19 +133,29 @@ def balance_candidates(candidates: list[dict[str, Any]], *, comparative: bool) -
     selected: list[dict[str, Any]] = []
     brand_counts: dict[str, int] = {}
     platform_seen: set[str] = set()
+    source_type_seen: set[str] = set()
+    authority_seen: set[str] = set()
 
     for candidate in ordered:
         brand = str(candidate.get("brand") or "unknown")
         brand_key = brand.strip().lower()
         platform = str(candidate.get("platform") or "unknown").strip().lower()
+        source_type = str(candidate.get("source_type") or "unknown").strip().lower()
+        authority = str(candidate.get("authority_level") or "social_signal").strip().lower()
         if brand_counts.get(brand_key, 0) >= 2:
             continue
         selected.append(candidate)
         brand_counts[brand_key] = brand_counts.get(brand_key, 0) + 1
         platform_seen.add(platform)
+        source_type_seen.add(source_type)
+        authority_seen.add(authority)
 
     if len(selected) < min(len(ordered), 3):
         return ordered
     if len(platform_seen) < 2 and len(ordered) >= 3:
+        return ordered
+    if len(source_type_seen) < 2 and len({str(item.get("source_type") or "unknown").strip().lower() for item in ordered}) >= 2:
+        return ordered
+    if len(authority_seen) < 2 and len({str(item.get("authority_level") or "social_signal").strip().lower() for item in ordered}) >= 2:
         return ordered
     return selected
