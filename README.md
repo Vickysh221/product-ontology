@@ -224,6 +224,19 @@ The discovery stage writes a reviewed candidate record under `library/sessions/w
 `approve-sources` hands the approved URLs directly into the existing `ingest-links` pipeline.
 Discovery does not bypass the `Source -> Artifact -> Review Pack -> Writeback` chain.
 
+## Search Relevance And Source Balancing
+
+Use search when you want scored source candidates before ingestion:
+
+```bash
+python3 scripts/link_to_report.py search-podwise --request-id ai-phone --topic "AI 手机" --research-direction "系统级 agent"
+python3 scripts/link_to_report.py search-xiaohongshu --request-id ai-phone --topic "AI 手机" --research-direction "系统级 agent"
+python3 scripts/link_to_report.py approve-search-candidates --request-id ai-phone --bundle-id ai-phone-bundle pod-1 xhs-2
+```
+
+Search writes reviewed candidate records under `library/sessions/search-selection/`.
+Approved candidates still flow through `Source -> Artifact -> Review Pack -> Writeback`.
+
 Current scope:
 - This is the short-term manual-links path only.
 - The current MVP proves the end-to-end chain and field contract with real ingestion adapters for podcast and Xiaohongshu inputs.
