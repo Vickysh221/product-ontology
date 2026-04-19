@@ -148,12 +148,6 @@ def balance_candidates(candidates: list[dict[str, Any]], *, comparative: bool) -
         source_type_seen.add(source_type)
         authority_seen.add(authority)
 
-    if len(selected) < min(len(ordered), 3):
-        return ordered
-    if len(platform_seen) < 2 and len(ordered) >= 3:
-        return ordered
-    if len(source_type_seen) < 2 and len({str(item.get("source_type") or "unknown").strip().lower() for item in ordered}) >= 2:
-        return ordered
-    if len(authority_seen) < 2 and len({str(item.get("authority_level") or "social_signal").strip().lower() for item in ordered}) >= 2:
+    if len(selected) < 2:
         return ordered
     return selected
