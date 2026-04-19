@@ -151,3 +151,19 @@ def test_balance_candidates_still_checks_mix_with_two_brands():
 
     assert {item["source_type"] for item in balanced} >= {"podcast_episode", "social_signal"}
     assert {item["authority_level"] for item in balanced} >= {"official", "structured_commentary"}
+
+
+def test_balance_candidates_limits_domination_in_two_brand_case():
+    mod = load_search_selection()
+
+    candidates = [
+        {"candidate_id": "1", "brand": "Samsung", "platform": "podwise", "source_type": "podcast_episode", "authority_level": "official", "relevance_score": 10},
+        {"candidate_id": "2", "brand": "Samsung", "platform": "podwise", "source_type": "podcast_episode", "authority_level": "official", "relevance_score": 9},
+        {"candidate_id": "3", "brand": "Samsung", "platform": "podwise", "source_type": "podcast_episode", "authority_level": "official", "relevance_score": 8},
+        {"candidate_id": "4", "brand": "Xiaomi", "platform": "xiaohongshu", "source_type": "social_signal", "authority_level": "structured_commentary", "relevance_score": 7},
+    ]
+
+    balanced = mod.balance_candidates(candidates, comparative=True)
+
+    assert [item["brand"] for item in balanced].count("Samsung") <= 2
+    assert "Xiaomi" in [item["brand"] for item in balanced]
