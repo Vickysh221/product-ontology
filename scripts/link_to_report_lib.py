@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import hashlib
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -287,45 +290,81 @@ def _slugify_text(value: str) -> str:
     return slugify_bundle_id(value)
 
 
+def _load_watch_terms(watch_profile: dict[str, object], section: str) -> list[str]:
+    return [str(item) for item in watch_profile.get(section, []) or [] if str(item).strip()]
+
+
+def _match_brand(text: str, watch_profile: dict[str, object]) -> str:
+    lowered = text.lower()
+    for brand in _load_watch_terms(watch_profile, "brands"):
+        if brand.lower() in lowered:
+            return brand
+    return ""
+
+
+def _run_json_command(command: list[str]) -> object:
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
 def search_podwise_candidates(query: str, limit: int, watch_profile: dict[str, object]) -> list[dict[str, object]]:
-    brands = [str(item) for item in watch_profile.get("brands", []) or []][: max(limit, 1)]
-    topics = [str(item) for item in watch_profile.get("active_topics", []) or []][: max(limit, 1)]
-    seeds = topics or brands or [query]
+    if shutil.which("podwise") is None:
+        raise RuntimeError("podwise CLI is not installed")
+    payload = _run_json_command(["podwise", "search", "episode", query, "--limit", str(limit), "--json"])
+    items = payload if isinstance(payload, list) else payload.get("items") or payload.get("results") or []
     candidates: list[dict[str, object]] = []
-    for index, seed in enumerate(seeds, start=1):
+    for index, item in enumerate(items, start=1):
+        title = str(item.get("title") or item.get("name") or "").strip()
+        summary = str(item.get("summary") or item.get("description") or "").strip()
+        url = str(item.get("url") or item.get("episode_url") or item.get("link") or "").strip()
+        if not title or not url:
+            continue
         candidates.append(
             {
-                "candidate_id": f"podwise-{index}",
-                "title": f"{seed} on Podwise",
-                "summary": f"{query} related commentary about {seed}",
+                "candidate_id": f"pod-{index}",
+                "title": title,
+                "summary": summary,
                 "platform": "podwise",
                 "source_type": "podcast_episode",
                 "authority_level": "structured_commentary",
-                "brand": brands[index - 1] if index - 1 < len(brands) else seed,
-                "url": f"https://podwise.example/{_slugify_text(seed)}",
+                "brand": _match_brand(f"{title} {summary}", watch_profile) or "unknown",
+                "url": url,
+                "has_transcript": bool(item.get("has_transcript", True)),
+                "has_highlights": bool(item.get("has_highlights", True)),
             }
         )
-        if len(candidates) >= limit:
-            break
     return candidates[:limit]
 
 
 def search_xiaohongshu_candidates(query: str, limit: int, watch_profile: dict[str, object]) -> list[dict[str, object]]:
-    brands = [str(item) for item in watch_profile.get("brands", []) or []][: max(limit, 1)]
-    topics = [str(item) for item in watch_profile.get("active_topics", []) or []][: max(limit, 1)]
-    seeds = brands or topics or [query]
+    if shutil.which("redbook") is None:
+        raise RuntimeError("redbook CLI is not installed")
+    payload = _run_json_command(["redbook", "search", query, "--json"])
+    items = payload if isinstance(payload, list) else payload.get("items") or payload.get("results") or []
     candidates: list[dict[str, object]] = []
-    for index, seed in enumerate(seeds, start=1):
+    for index, item in enumerate(items, start=1):
+        title = str(item.get("title") or "").strip()
+        summary = str(item.get("content") or item.get("summary") or item.get("desc") or "").strip()
+        url = str(item.get("url") or item.get("note_url") or item.get("link") or "").strip()
+        if not title or not url:
+            continue
         candidates.append(
             {
                 "candidate_id": f"xhs-{index}",
-                "title": f"{seed} 小红书观察",
-                "summary": f"{query} related note about {seed}",
+                "title": title,
+                "summary": summary,
                 "platform": "xiaohongshu",
                 "source_type": "social_signal",
                 "authority_level": "social_signal",
-                "brand": seed,
-                "url": f"https://www.xiaohongshu.com/explore/{_slugify_text(seed)}",
+                "brand": _match_brand(f"{title} {summary}", watch_profile) or "unknown",
+                "url": url,
+                "has_full_text": bool(summary),
             }
         )
         if len(candidates) >= limit:
@@ -412,14 +451,18 @@ def _search_source(
 
 
 def command_search_podwise(args: argparse.Namespace) -> int:
-    candidates, path = _search_source(
-        request_id=slugify_bundle_id(args.request_id),
-        source="podwise",
-        topic=args.topic,
-        research_direction=getattr(args, "research_direction", "") or "",
-        limit=max(int(getattr(args, "limit", 10)), 1),
-        search_fn=search_podwise_candidates,
-    )
+    try:
+        candidates, path = _search_source(
+            request_id=slugify_bundle_id(args.request_id),
+            source="podwise",
+            topic=args.topic,
+            research_direction=getattr(args, "research_direction", "") or "",
+            limit=max(int(getattr(args, "limit", 10)), 1),
+            search_fn=search_podwise_candidates,
+        )
+    except (RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     try:
         print(path.relative_to(ROOT))
     except ValueError:
@@ -428,14 +471,18 @@ def command_search_podwise(args: argparse.Namespace) -> int:
 
 
 def command_search_xiaohongshu(args: argparse.Namespace) -> int:
-    candidates, path = _search_source(
-        request_id=slugify_bundle_id(args.request_id),
-        source="xiaohongshu",
-        topic=args.topic,
-        research_direction=getattr(args, "research_direction", "") or "",
-        limit=max(int(getattr(args, "limit", 10)), 1),
-        search_fn=search_xiaohongshu_candidates,
-    )
+    try:
+        candidates, path = _search_source(
+            request_id=slugify_bundle_id(args.request_id),
+            source="xiaohongshu",
+            topic=args.topic,
+            research_direction=getattr(args, "research_direction", "") or "",
+            limit=max(int(getattr(args, "limit", 10)), 1),
+            search_fn=search_xiaohongshu_candidates,
+        )
+    except (RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     try:
         print(path.relative_to(ROOT))
     except ValueError:
