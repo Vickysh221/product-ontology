@@ -65,6 +65,7 @@ build_discovery_candidates = web_discovery.build_discovery_candidates
 
 score_candidate = search_selection.score_candidate
 balance_candidates = search_selection.balance_candidates
+detect_coverage_gaps = search_selection.detect_coverage_gaps
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -378,6 +379,7 @@ def render_search_selection_record(
     source: str,
     topic: str,
     candidates: list[dict[str, object]],
+    coverage_gaps: list[str] | None = None,
 ) -> str:
     lines = [
         "# Search Selection Record",
@@ -385,6 +387,7 @@ def render_search_selection_record(
         f"- request_id: `{request_id}`",
         f"- source: `{source}`",
         f"- topic: `{topic}`",
+        f"- coverage_gaps: {format_list([str(item) for item in (coverage_gaps or [])])}",
         "",
     ]
     for item in candidates:
@@ -410,7 +413,13 @@ def render_search_selection_record(
     return "\n".join(lines)
 
 
-def write_search_selection_record(request_id: str, source: str, topic: str, candidates: list[dict[str, object]]) -> Path:
+def write_search_selection_record(
+    request_id: str,
+    source: str,
+    topic: str,
+    candidates: list[dict[str, object]],
+    coverage_gaps: list[str] | None = None,
+) -> Path:
     path = SEARCH_SELECTION_ROOT / request_id / f"{source}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -419,6 +428,7 @@ def write_search_selection_record(request_id: str, source: str, topic: str, cand
             source=source,
             topic=topic,
             candidates=candidates,
+            coverage_gaps=coverage_gaps,
         ),
         encoding="utf-8",
     )
@@ -446,7 +456,8 @@ def _search_source(
         for candidate in raw_candidates
     ]
     balanced_candidates = search_selection.balance_candidates(scored_candidates, comparative=True)
-    path = write_search_selection_record(request_id, source, topic, balanced_candidates)
+    coverage_gaps = search_selection.detect_coverage_gaps(balanced_candidates, comparative=True)
+    path = write_search_selection_record(request_id, source, topic, balanced_candidates, coverage_gaps)
     return balanced_candidates, path
 
 

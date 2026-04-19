@@ -151,3 +151,21 @@ def balance_candidates(candidates: list[dict[str, Any]], *, comparative: bool) -
     if len(selected) < 2:
         return ordered
     return selected
+
+
+def detect_coverage_gaps(candidates: list[dict[str, Any]], *, comparative: bool) -> list[str]:
+    if not comparative or not candidates:
+        return []
+
+    gaps: list[str] = []
+    brands = {str(item.get("brand") or "unknown").strip().lower() for item in candidates}
+    source_types = {str(item.get("source_type") or "unknown").strip().lower() for item in candidates}
+    authority_levels = {str(item.get("authority_level") or "social_signal").strip().lower() for item in candidates}
+
+    if len(brands) < 3:
+        gaps.append("brand coverage below comparative target")
+    if len(source_types) < 2:
+        gaps.append("source_type coverage below comparative target")
+    if len(authority_levels) < 2:
+        gaps.append("authority mix below comparative target")
+    return gaps

@@ -167,3 +167,19 @@ def test_balance_candidates_limits_domination_in_two_brand_case():
 
     assert [item["brand"] for item in balanced].count("Samsung") <= 2
     assert "Xiaomi" in [item["brand"] for item in balanced]
+
+
+def test_detect_coverage_gaps_reports_missing_mix():
+    mod = load_search_selection()
+
+    gaps = mod.detect_coverage_gaps(
+        [
+            {"brand": "Samsung", "source_type": "podcast_episode", "authority_level": "official"},
+            {"brand": "Xiaomi", "source_type": "podcast_episode", "authority_level": "official"},
+        ],
+        comparative=True,
+    )
+
+    assert "brand coverage below comparative target" in gaps
+    assert "source_type coverage below comparative target" in gaps
+    assert "authority mix below comparative target" in gaps
