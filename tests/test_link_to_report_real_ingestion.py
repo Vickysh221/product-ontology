@@ -49,6 +49,46 @@ def test_import_episode_returns_slug(tmp_path, monkeypatch):
     assert slug
 
 
+def test_import_episode_waits_until_podwise_content_is_ready(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    podcast_import = lib.podcast_import
+    monkeypatch.setattr(podcast_import, "ROOT", tmp_path)
+    monkeypatch.setattr(podcast_import, "SOURCES_DIR", tmp_path / "library" / "sources" / "podcasts")
+    monkeypatch.setattr(podcast_import, "ARTIFACTS_DIR", tmp_path / "library" / "artifacts" / "podcasts")
+
+    calls: list[tuple[str, ...]] = []
+    get_attempts = {"summary": 0}
+
+    def fake_run_podwise(args):
+        calls.append(tuple(args))
+        if args[0] == "process":
+            return "submitted"
+        if args[:2] == ["get", "transcript"]:
+            return "transcript body"
+        if args[:2] == ["get", "summary"]:
+            get_attempts["summary"] += 1
+            if get_attempts["summary"] == 1:
+                raise subprocess.CalledProcessError(
+                    returncode=1,
+                    cmd=["podwise", *args],
+                    stderr="Error: episode has not been processed yet",
+                )
+            return "summary body"
+        if args[:2] == ["get", "highlights"]:
+            return "highlights body"
+        raise AssertionError(f"unexpected args: {args}")
+
+    monkeypatch.setattr(podcast_import, "run_podwise", fake_run_podwise)
+    monkeypatch.setattr(podcast_import.time, "sleep", lambda _: None)
+
+    slug = podcast_import.import_episode("https://podwise.ai/dashboard/episodes/7536117", force=True)
+
+    assert slug
+    assert get_attempts["summary"] == 2
+    assert ("process", "https://podwise.ai/dashboard/episodes/7536117") in calls
+    assert calls.count(("get", "summary", "https://podwise.ai/dashboard/episodes/7536117")) == 2
+
+
 def test_import_note_url_returns_slug(tmp_path, monkeypatch):
     lib = load_link_to_report_lib_module()
     xhs_import = lib.xiaohongshu_redbook_import

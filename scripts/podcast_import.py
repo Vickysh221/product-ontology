@@ -8,6 +8,7 @@ import hashlib
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,9 @@ SOURCES_DIR = ROOT / "library" / "sources" / "podcasts"
 ARTIFACTS_DIR = ROOT / "library" / "artifacts" / "podcasts"
 
 URL_PATTERN = re.compile(r"https?://[^\s)>\]]+")
+PROCESSING_PENDING_NEEDLE = "episode has not been processed yet"
+PODWISE_GET_RETRIES = 12
+PODWISE_RETRY_DELAY_SECONDS = 5
 
 
 @dataclass(frozen=True)
@@ -108,6 +112,18 @@ def run_podwise(args: list[str]) -> str:
         text=True,
     )
     return completed.stdout.strip()
+
+
+def run_podwise_get_when_ready(args: list[str]) -> str:
+    for attempt in range(PODWISE_GET_RETRIES):
+        try:
+            return run_podwise(args)
+        except subprocess.CalledProcessError as error:
+            stderr = (error.stderr or "").lower()
+            if PROCESSING_PENDING_NEEDLE not in stderr or attempt == PODWISE_GET_RETRIES - 1:
+                raise
+            time.sleep(PODWISE_RETRY_DELAY_SECONDS)
+    raise RuntimeError("unreachable")
 
 
 def utc_now() -> str:
@@ -216,9 +232,9 @@ def import_episode(source_url: str, *, force: bool = False) -> str:
     record.artifact_dir.mkdir(parents=True, exist_ok=True)
 
     run_podwise(["process", source_url])
-    transcript = run_podwise(["get", "transcript", source_url])
-    summary = run_podwise(["get", "summary", source_url])
-    highlights = run_podwise(["get", "highlights", source_url])
+    transcript = run_podwise_get_when_ready(["get", "transcript", source_url])
+    summary = run_podwise_get_when_ready(["get", "summary", source_url])
+    highlights = run_podwise_get_when_ready(["get", "highlights", source_url])
 
     record.source_path.write_text(
         render_source_markdown(record, imported_at),
