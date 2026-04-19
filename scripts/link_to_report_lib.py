@@ -23,7 +23,7 @@ WRITEBACK_ROOT = ROOT / "library" / "writebacks" / "link-to-report"
 LINK_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("xiaohongshu", ("xiaohongshu.com", "xhslink.com", "xhs.cn")),
     ("wechat", ("weixin.qq.com", "mp.weixin.qq.com", "wechat.com")),
-    ("podcast", ("podcast", "spotify.com", "podcasts.apple.com", "apple.com/podcast")),
+    ("podcast", ("podcast", "spotify.com", "podcasts.apple.com", "apple.com/podcast", "podwise.ai/dashboard/episodes")),
     ("video", ("youtube.com", "bilibili.com", "tiktok.com", "douyin.com")),
 )
 INGESTION_ADAPTERS: dict[str, callable] = {}

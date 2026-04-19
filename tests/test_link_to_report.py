@@ -95,6 +95,7 @@ def test_link_to_report_detect_link_type():
 
     assert lib.detect_link_type("https://www.xiaohongshu.com/explore/123") == "xiaohongshu"
     assert lib.detect_link_type("https://podcasts.apple.com/us/podcast/example/id123") == "podcast"
+    assert lib.detect_link_type("https://podwise.ai/dashboard/episodes/7536117") == "podcast"
     assert lib.detect_link_type("https://mp.weixin.qq.com/s/example") == "wechat"
     assert lib.detect_link_type("/tmp/local-note.md") == "local-file"
     assert lib.detect_link_type("not-a-url") == "unknown"
