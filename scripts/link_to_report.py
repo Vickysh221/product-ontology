@@ -5,6 +5,9 @@ import argparse
 
 from link_to_report_lib import (
     command_approve_sources,
+    command_approve_search_candidates,
+    command_search_podwise,
+    command_search_xiaohongshu,
     command_discover_web,
     command_generate_report,
     command_ingest_links,
@@ -46,6 +49,32 @@ def build_parser() -> argparse.ArgumentParser:
     approve.add_argument("--bundle-id", required=True)
     approve.add_argument("urls", nargs="+")
 
+    search_podwise = subparsers.add_parser(
+        "search-podwise",
+        help="Search podwise and write a scored candidate record.",
+    )
+    search_podwise.add_argument("--request-id", required=True)
+    search_podwise.add_argument("--topic", required=True)
+    search_podwise.add_argument("--research-direction", default="")
+    search_podwise.add_argument("--limit", type=int, default=10)
+
+    search_xiaohongshu = subparsers.add_parser(
+        "search-xiaohongshu",
+        help="Search xiaohongshu and write a scored candidate record.",
+    )
+    search_xiaohongshu.add_argument("--request-id", required=True)
+    search_xiaohongshu.add_argument("--topic", required=True)
+    search_xiaohongshu.add_argument("--research-direction", default="")
+    search_xiaohongshu.add_argument("--limit", type=int, default=10)
+
+    approve_search = subparsers.add_parser(
+        "approve-search-candidates",
+        help="Approve scored search candidates into a bundle.",
+    )
+    approve_search.add_argument("--request-id", required=True)
+    approve_search.add_argument("--bundle-id", required=True)
+    approve_search.add_argument("candidate_ids", nargs="+")
+
     propose = subparsers.add_parser(
         "propose-direction",
         help="Create one research direction candidate from a bundle.",
@@ -80,6 +109,12 @@ def main() -> int:
         return command_discover_web(args)
     if args.command == "approve-sources":
         return command_approve_sources(args)
+    if args.command == "search-podwise":
+        return command_search_podwise(args)
+    if args.command == "search-xiaohongshu":
+        return command_search_xiaohongshu(args)
+    if args.command == "approve-search-candidates":
+        return command_approve_search_candidates(args)
     if args.command == "propose-direction":
         return command_propose_direction(args)
     if args.command == "generate-report":
