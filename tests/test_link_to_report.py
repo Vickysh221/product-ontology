@@ -48,6 +48,19 @@ def test_link_to_report_help_shows_discovery_commands():
     assert "approve-sources" in result.stdout
 
 
+def test_link_to_report_help_shows_search_commands():
+    result = subprocess.run(
+        [sys.executable, "scripts/link_to_report.py", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "search-podwise" in result.stdout
+    assert "search-xiaohongshu" in result.stdout
+    assert "approve-search-candidates" in result.stdout
+
+
 def test_ingest_links_requires_at_least_one_link():
     result = subprocess.run(
         [sys.executable, "scripts/link_to_report.py", "ingest-links"],
@@ -154,6 +167,102 @@ def test_command_discover_web_writes_discovery_record(tmp_path, monkeypatch):
     assert "## Structured Commentary" in text
 
 
+def test_search_commands_write_selection_record(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+    selection_root = tmp_path / "library" / "sessions" / "search-selection"
+    monkeypatch.setattr(lib, "SEARCH_SELECTION_ROOT", selection_root)
+
+    scored_inputs = {}
+
+    def fake_score_candidate(candidate, *, topic, research_direction, watch_profile):
+        scored_inputs["topic"] = topic
+        scored_inputs["research_direction"] = research_direction
+        scored_inputs["watch_profile"] = watch_profile
+        return {
+            **candidate,
+            "relevance_score": 7,
+            "topic_matches": [topic],
+            "ontology_matches": ["workflow"],
+            "evidence_richness": 3,
+            "downgrade_reasons": [],
+            "coverage_role": "core",
+        }
+
+    balanced_called = {}
+
+    def fake_balance_candidates(candidates, *, comparative):
+        balanced_called["comparative"] = comparative
+        balanced_called["count"] = len(candidates)
+        return candidates
+
+    monkeypatch.setattr(lib.search_selection, "score_candidate", fake_score_candidate)
+    monkeypatch.setattr(lib.search_selection, "balance_candidates", fake_balance_candidates)
+
+    monkeypatch.setattr(
+        lib,
+        "search_podwise_candidates",
+        lambda query, limit, watch_profile: [
+            {
+                "candidate_id": "pod-1",
+                "title": "demo",
+                "summary": "demo summary",
+                "url": "https://podwise.ai/dashboard/episodes/demo",
+                "platform": "podwise",
+                "source_type": "podcast_episode",
+                "authority_level": "structured_commentary",
+                "brand": "Samsung",
+            }
+        ][:limit],
+    )
+
+    result = lib.command_search_podwise(
+        argparse.Namespace(
+            request_id="ai-phone",
+            topic="AI 手机",
+            research_direction="系统级 agent",
+            limit=5,
+        )
+    )
+
+    assert result == 0
+    assert scored_inputs["topic"] == "AI 手机"
+    assert scored_inputs["research_direction"] == "系统级 agent"
+    assert balanced_called["comparative"] is True
+    record_path = selection_root / "ai-phone" / "podwise.md"
+    assert record_path.exists()
+    text = record_path.read_text(encoding="utf-8")
+    assert "# Search Selection Record" in text
+    assert "pod-1" in text
+    assert "relevance_score" in text
+
+    monkeypatch.setattr(
+        lib,
+        "search_xiaohongshu_candidates",
+        lambda query, limit, watch_profile: [
+            {
+                "candidate_id": "xhs-1",
+                "title": "demo xhs",
+                "summary": "demo summary",
+                "url": "https://www.xiaohongshu.com/explore/demo",
+                "platform": "xiaohongshu",
+                "source_type": "social_signal",
+                "authority_level": "social_signal",
+                "brand": "Xiaomi",
+            }
+        ][:limit],
+    )
+    result = lib.command_search_xiaohongshu(
+        argparse.Namespace(
+            request_id="ai-phone",
+            topic="AI 手机",
+            research_direction="系统级 agent",
+            limit=5,
+        )
+    )
+    assert result == 0
+    assert (selection_root / "ai-phone" / "xiaohongshu.md").exists()
+
+
 def test_ingest_links_dry_run_writes_run_summary_and_derives_bundle_path(tmp_path):
     lib = load_link_to_report_lib_module()
     links = [
@@ -207,6 +316,53 @@ def test_approve_sources_hands_urls_to_ingest_bundle(monkeypatch):
     assert result == 0
     assert captured["bundle_id"] == "ai-phone-bundle"
     assert captured["links"] == ["https://www.apple.com/apple-intelligence/"]
+
+
+def test_approve_search_candidates_hands_selected_urls_to_ingest_bundle(tmp_path, monkeypatch):
+    lib = load_link_to_report_lib_module()
+
+    selection_root = tmp_path / "search-selection"
+    record_dir = selection_root / "ai-phone"
+    record_dir.mkdir(parents=True)
+    (record_dir / "podwise.md").write_text(
+        "# Search Selection Record\n\n## Candidate\n\n- candidate_id: `pod-1`\n- title: `demo`\n- url: `https://podwise.ai/dashboard/episodes/demo`\n- platform: `podwise`\n- source_type: `podcast_episode`\n- authority_level: `structured_commentary`\n- relevance_score: `7`\n- topic_matches: [`AI 手机`]\n- ontology_matches: [`workflow`]\n- evidence_richness: `3`\n- downgrade_reasons: []\n- coverage_role: `core`\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(lib, "SEARCH_SELECTION_ROOT", selection_root)
+    captured = {}
+
+    def fake_command_ingest_links(args):
+        captured["links"] = list(args.links)
+        captured["bundle_id"] = args.bundle_id
+        return 0
+
+    monkeypatch.setattr(lib, "command_ingest_links", fake_command_ingest_links)
+
+    result = lib.command_approve_search_candidates(
+        argparse.Namespace(
+            request_id="ai-phone",
+            bundle_id="ai-phone-bundle",
+            candidate_ids=["pod-1"],
+        )
+    )
+
+    assert result == 0
+    assert captured["bundle_id"] == "ai-phone-bundle"
+    assert captured["links"] == ["https://podwise.ai/dashboard/episodes/demo"]
+
+
+def test_approve_search_candidates_rejects_missing_ids(capsys):
+    lib = load_link_to_report_lib_module()
+    result = lib.command_approve_search_candidates(
+        argparse.Namespace(
+            request_id="ai-phone",
+            bundle_id="ai-phone-bundle",
+            candidate_ids=[],
+        )
+    )
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "candidate_ids are required for approve-search-candidates" in captured.err
 
 
 def test_approve_sources_rejects_empty_urls(capsys):

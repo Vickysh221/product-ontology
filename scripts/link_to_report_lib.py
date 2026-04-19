@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import hashlib
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -12,6 +15,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 LINK_TO_REPORT_ROOT = ROOT / "library" / "sessions" / "link-to-report"
 DISCOVERY_ROOT = ROOT / "library" / "sessions" / "web-discovery"
+SEARCH_SELECTION_ROOT = ROOT / "library" / "sessions" / "search-selection"
 INTAKE_ROOT = ROOT / "library" / "writeback-intakes" / "link-to-report"
 REVIEW_PACK_ROOT = ROOT / "library" / "review-packs" / "link-to-report"
 WRITEBACK_ROOT = ROOT / "library" / "writebacks" / "link-to-report"
@@ -49,6 +53,7 @@ podcast_import = load_script_module("podcast_import.py", "podcast_import")
 xiaohongshu_redbook_import = load_script_module("xiaohongshu_redbook_import.py", "xiaohongshu_redbook_import")
 writeback_generate = load_script_module("writeback_generate.py", "writeback_generate")
 web_discovery = load_script_module("web_discovery.py", "web_discovery")
+search_selection = load_script_module("search_selection.py", "search_selection")
 
 import_episode = podcast_import.import_episode
 write_artifact_record = source_ingest.write_artifact_record
@@ -57,6 +62,10 @@ import_note_url = xiaohongshu_redbook_import.import_note_url
 normalize_source_candidate = web_discovery.normalize_source_candidate
 render_discovery_record = web_discovery.render_discovery_record
 build_discovery_candidates = web_discovery.build_discovery_candidates
+
+score_candidate = search_selection.score_candidate
+balance_candidates = search_selection.balance_candidates
+detect_coverage_gaps = search_selection.detect_coverage_gaps
 
 
 def slugify_bundle_id(value: str) -> str:
@@ -111,6 +120,127 @@ def parse_csv(value: str | None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _strip_yaml_scalar(value: str) -> str:
+    value = value.strip()
+    if (value.startswith("'") and value.endswith("'")) or (value.startswith('"') and value.endswith('"')):
+        return value[1:-1]
+    return value
+
+
+def load_watch_profile() -> dict[str, object]:
+    watch_profile_path = ROOT / "seed" / "watch-profile.yaml"
+    if not watch_profile_path.exists():
+        return {}
+    text = watch_profile_path.read_text(encoding="utf-8")
+    try:
+        import yaml  # type: ignore
+
+        loaded = yaml.safe_load(text)
+        return loaded if isinstance(loaded, dict) else {}
+    except Exception:
+        pass
+
+    data: dict[str, object] = {}
+    lines = text.splitlines()
+
+    def next_significant(start: int) -> tuple[int, str] | None:
+        for index in range(start, len(lines)):
+            stripped = lines[index].strip()
+            if stripped and not stripped.startswith("#"):
+                return len(lines[index]) - len(lines[index].lstrip(" ")), stripped
+        return None
+
+    def parse_block(start: int, base_indent: int) -> tuple[object, int]:
+        block: dict[str, object] = {}
+        index = start
+        while index < len(lines):
+            raw = lines[index]
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                index += 1
+                continue
+            indent = len(raw) - len(raw.lstrip(" "))
+            if indent < base_indent:
+                break
+            if indent > base_indent:
+                index += 1
+                continue
+            if ":" not in stripped:
+                index += 1
+                continue
+            key, rest = stripped.split(":", 1)
+            key = key.strip()
+            rest = rest.strip()
+            if rest:
+                block[key] = _strip_yaml_scalar(rest)
+                index += 1
+                continue
+            lookahead = next_significant(index + 1)
+            if lookahead is not None and lookahead[1].startswith("- "):
+                items: list[str] = []
+                index += 1
+                while index < len(lines):
+                    nested_raw = lines[index]
+                    nested_stripped = nested_raw.strip()
+                    if not nested_stripped or nested_stripped.startswith("#"):
+                        index += 1
+                        continue
+                    nested_indent = len(nested_raw) - len(nested_raw.lstrip(" "))
+                    if nested_indent <= indent:
+                        break
+                    if nested_stripped.startswith("- "):
+                        items.append(_strip_yaml_scalar(nested_stripped[2:].strip()))
+                    index += 1
+                block[key] = items
+                continue
+            index += 1
+            child, consumed = parse_block(index, indent + 2)
+            block[key] = child
+            index = consumed
+        return block, index
+
+    index = 0
+    while index < len(lines):
+        raw = lines[index]
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            index += 1
+            continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        if indent != 0 or ":" not in stripped:
+            index += 1
+            continue
+        key, rest = stripped.split(":", 1)
+        key = key.strip()
+        rest = rest.strip()
+        if rest:
+            data[key] = _strip_yaml_scalar(rest)
+            index += 1
+            continue
+        lookahead = next_significant(index + 1)
+        if lookahead is not None and lookahead[1].startswith("- "):
+            items: list[str] = []
+            index += 1
+            while index < len(lines):
+                nested_raw = lines[index]
+                nested_stripped = nested_raw.strip()
+                if not nested_stripped or nested_stripped.startswith("#"):
+                    index += 1
+                    continue
+                nested_indent = len(nested_raw) - len(nested_raw.lstrip(" "))
+                if nested_indent <= indent:
+                    break
+                if nested_stripped.startswith("- "):
+                    items.append(_strip_yaml_scalar(nested_stripped[2:].strip()))
+                index += 1
+            data[key] = items
+            continue
+        child, consumed = parse_block(index + 1, indent + 2)
+        data[key] = child
+        index = consumed
+    return data
+
+
 def read_markdown_field(text: str, field_name: str) -> str:
     prefix = f"- {field_name}: `"
     for line in text.splitlines():
@@ -155,6 +285,284 @@ def build_proposed_direction_from_bundle_outputs(link_results: list[dict[str, ob
             "这些线索是否共同指向协作边界、责任边界或工作流结构的变化？"
         )
     return "这组链接共同指向的产品问题是什么，尤其是它们是否在重写协作边界、责任边界或工作流结构"
+
+
+def _slugify_text(value: str) -> str:
+    return slugify_bundle_id(value)
+
+
+def _load_watch_terms(watch_profile: dict[str, object], section: str) -> list[str]:
+    return [str(item) for item in watch_profile.get(section, []) or [] if str(item).strip()]
+
+
+def _match_brand(text: str, watch_profile: dict[str, object]) -> str:
+    lowered = text.lower()
+    for brand in _load_watch_terms(watch_profile, "brands"):
+        if brand.lower() in lowered:
+            return brand
+    return ""
+
+
+def _run_json_command(command: list[str]) -> object:
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def search_podwise_candidates(query: str, limit: int, watch_profile: dict[str, object]) -> list[dict[str, object]]:
+    if shutil.which("podwise") is None:
+        raise RuntimeError("podwise CLI is not installed")
+    payload = _run_json_command(["podwise", "search", "episode", query, "--limit", str(limit), "--json"])
+    items = payload if isinstance(payload, list) else payload.get("items") or payload.get("results") or []
+    candidates: list[dict[str, object]] = []
+    for index, item in enumerate(items, start=1):
+        title = str(item.get("title") or item.get("name") or "").strip()
+        summary = str(item.get("summary") or item.get("description") or "").strip()
+        url = str(item.get("url") or item.get("episode_url") or item.get("link") or "").strip()
+        if not title or not url:
+            continue
+        candidates.append(
+            {
+                "candidate_id": f"pod-{index}",
+                "title": title,
+                "summary": summary,
+                "platform": "podwise",
+                "source_type": "podcast_episode",
+                "authority_level": "structured_commentary",
+                "brand": _match_brand(f"{title} {summary}", watch_profile) or "unknown",
+                "url": url,
+                "has_transcript": bool(item.get("has_transcript", True)),
+                "has_highlights": bool(item.get("has_highlights", True)),
+            }
+        )
+    return candidates[:limit]
+
+
+def search_xiaohongshu_candidates(query: str, limit: int, watch_profile: dict[str, object]) -> list[dict[str, object]]:
+    if shutil.which("redbook") is None:
+        raise RuntimeError("redbook CLI is not installed")
+    payload = _run_json_command(["redbook", "search", query, "--json"])
+    items = payload if isinstance(payload, list) else payload.get("items") or payload.get("results") or []
+    candidates: list[dict[str, object]] = []
+    for index, item in enumerate(items, start=1):
+        title = str(item.get("title") or "").strip()
+        summary = str(item.get("content") or item.get("summary") or item.get("desc") or "").strip()
+        url = str(item.get("url") or item.get("note_url") or item.get("link") or "").strip()
+        if not title or not url:
+            continue
+        candidates.append(
+            {
+                "candidate_id": f"xhs-{index}",
+                "title": title,
+                "summary": summary,
+                "platform": "xiaohongshu",
+                "source_type": "social_signal",
+                "authority_level": "social_signal",
+                "brand": _match_brand(f"{title} {summary}", watch_profile) or "unknown",
+                "url": url,
+                "has_full_text": bool(summary),
+            }
+        )
+        if len(candidates) >= limit:
+            break
+    return candidates[:limit]
+
+
+def render_search_selection_record(
+    *,
+    request_id: str,
+    source: str,
+    topic: str,
+    candidates: list[dict[str, object]],
+    coverage_gaps: list[str] | None = None,
+) -> str:
+    lines = [
+        "# Search Selection Record",
+        "",
+        f"- request_id: `{request_id}`",
+        f"- source: `{source}`",
+        f"- topic: `{topic}`",
+        f"- coverage_gaps: {format_list([str(item) for item in (coverage_gaps or [])])}",
+        "",
+    ]
+    for item in candidates:
+        lines.extend(
+            [
+                "## Candidate",
+                "",
+                f"- candidate_id: `{item.get('candidate_id', '')}`",
+                f"- title: `{item.get('title', '')}`",
+                f"- url: `{item.get('url', '')}`",
+                f"- platform: `{item.get('platform', '')}`",
+                f"- source_type: `{item.get('source_type', '')}`",
+                f"- authority_level: `{item.get('authority_level', '')}`",
+                f"- relevance_score: `{item.get('relevance_score', 0)}`",
+                f"- topic_matches: {format_list([str(value) for value in item.get('topic_matches', []) or []])}",
+                f"- ontology_matches: {format_list([str(value) for value in item.get('ontology_matches', []) or []])}",
+                f"- evidence_richness: `{item.get('evidence_richness', 0)}`",
+                f"- downgrade_reasons: {format_list([str(value) for value in item.get('downgrade_reasons', []) or []])}",
+                f"- coverage_role: `{item.get('coverage_role', 'core')}`",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def write_search_selection_record(
+    request_id: str,
+    source: str,
+    topic: str,
+    candidates: list[dict[str, object]],
+    coverage_gaps: list[str] | None = None,
+) -> Path:
+    path = SEARCH_SELECTION_ROOT / request_id / f"{source}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        render_search_selection_record(
+            request_id=request_id,
+            source=source,
+            topic=topic,
+            candidates=candidates,
+            coverage_gaps=coverage_gaps,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _search_source(
+    *,
+    request_id: str,
+    source: str,
+    topic: str,
+    research_direction: str,
+    limit: int,
+    search_fn,
+) -> tuple[list[dict[str, object]], Path]:
+    watch_profile = load_watch_profile()
+    raw_candidates = search_fn(topic, limit, watch_profile)
+    scored_candidates = [
+        search_selection.score_candidate(
+            candidate,
+            topic=topic,
+            research_direction=research_direction,
+            watch_profile=watch_profile,
+        )
+        for candidate in raw_candidates
+    ]
+    balanced_candidates = search_selection.balance_candidates(scored_candidates, comparative=True)
+    coverage_gaps = search_selection.detect_coverage_gaps(balanced_candidates, comparative=True)
+    path = write_search_selection_record(request_id, source, topic, balanced_candidates, coverage_gaps)
+    return balanced_candidates, path
+
+
+def command_search_podwise(args: argparse.Namespace) -> int:
+    try:
+        candidates, path = _search_source(
+            request_id=slugify_bundle_id(args.request_id),
+            source="podwise",
+            topic=args.topic,
+            research_direction=getattr(args, "research_direction", "") or "",
+            limit=max(int(getattr(args, "limit", 10)), 1),
+            search_fn=search_podwise_candidates,
+        )
+    except (RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        print(path.relative_to(ROOT))
+    except ValueError:
+        print(path)
+    return 0 if candidates is not None else 1
+
+
+def command_search_xiaohongshu(args: argparse.Namespace) -> int:
+    try:
+        candidates, path = _search_source(
+            request_id=slugify_bundle_id(args.request_id),
+            source="xiaohongshu",
+            topic=args.topic,
+            research_direction=getattr(args, "research_direction", "") or "",
+            limit=max(int(getattr(args, "limit", 10)), 1),
+            search_fn=search_xiaohongshu_candidates,
+        )
+    except (RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        print(path.relative_to(ROOT))
+    except ValueError:
+        print(path)
+    return 0 if candidates is not None else 1
+
+
+def parse_search_selection_record(text: str) -> list[dict[str, str]]:
+    candidates: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    in_candidate = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "## Candidate":
+            if current:
+                candidates.append(current)
+            current = {}
+            in_candidate = True
+            continue
+        if not in_candidate or not stripped.startswith("- ") or current is None:
+            continue
+        match = re.match(r"^- ([^:]+):\s*(.*)$", stripped)
+        if not match:
+            continue
+        key = match.group(1).strip()
+        value = match.group(2).strip()
+        if value.startswith("`") and value.endswith("`"):
+            value = value[1:-1]
+        current[key] = value
+    if current:
+        candidates.append(current)
+    return candidates
+
+
+def load_search_selection_candidates(request_id: str) -> list[dict[str, str]]:
+    request_dir = SEARCH_SELECTION_ROOT / request_id
+    candidates: list[dict[str, str]] = []
+    if not request_dir.exists():
+        return candidates
+    for path in sorted(request_dir.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        candidates.extend(parse_search_selection_record(text))
+    return candidates
+
+
+def command_approve_search_candidates(args: argparse.Namespace) -> int:
+    candidate_ids = [candidate_id.strip() for candidate_id in getattr(args, "candidate_ids", []) if candidate_id.strip()]
+    if not candidate_ids:
+        print("candidate_ids are required for approve-search-candidates", file=sys.stderr)
+        return 2
+
+    candidates = load_search_selection_candidates(slugify_bundle_id(args.request_id))
+    candidate_map = {candidate.get("candidate_id", ""): candidate.get("url", "") for candidate in candidates if candidate.get("candidate_id")}
+    urls: list[str] = []
+    for candidate_id in candidate_ids:
+        url = str(candidate_map.get(candidate_id, "")).strip()
+        if not url:
+            print(f"missing search candidate id: {candidate_id}", file=sys.stderr)
+            return 2
+        urls.append(url)
+
+    return command_ingest_links(
+        argparse.Namespace(
+            links=urls,
+            bundle_id=args.bundle_id,
+            force=False,
+            dry_run=False,
+        )
+    )
 
 
 def command_discover_web(args: argparse.Namespace) -> int:
