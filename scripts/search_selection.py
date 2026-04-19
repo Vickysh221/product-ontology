@@ -127,8 +127,6 @@ def balance_candidates(candidates: list[dict[str, Any]], *, comparative: bool) -
         return ordered
 
     unique_brands = {str(item.get("brand") or "unknown").strip().lower() for item in ordered}
-    if len(unique_brands) < 3:
-        return ordered
 
     selected: list[dict[str, Any]] = []
     brand_counts: dict[str, int] = {}
@@ -142,7 +140,7 @@ def balance_candidates(candidates: list[dict[str, Any]], *, comparative: bool) -
         platform = str(candidate.get("platform") or "unknown").strip().lower()
         source_type = str(candidate.get("source_type") or "unknown").strip().lower()
         authority = str(candidate.get("authority_level") or "social_signal").strip().lower()
-        if brand_counts.get(brand_key, 0) >= 2:
+        if len(unique_brands) >= 3 and brand_counts.get(brand_key, 0) >= 2:
             continue
         selected.append(candidate)
         brand_counts[brand_key] = brand_counts.get(brand_key, 0) + 1

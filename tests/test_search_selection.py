@@ -136,3 +136,18 @@ def test_balance_candidates_keeps_source_type_and_authority_mix_when_available()
 
     assert {item["source_type"] for item in balanced} >= {"podcast_episode", "social_signal"}
     assert {item["authority_level"] for item in balanced} >= {"official", "structured_commentary"}
+
+
+def test_balance_candidates_still_checks_mix_with_two_brands():
+    mod = load_search_selection()
+
+    candidates = [
+        {"candidate_id": "1", "brand": "Samsung", "platform": "podwise", "source_type": "podcast_episode", "authority_level": "official", "relevance_score": 9},
+        {"candidate_id": "2", "brand": "Samsung", "platform": "podwise", "source_type": "podcast_episode", "authority_level": "official", "relevance_score": 8},
+        {"candidate_id": "3", "brand": "Xiaomi", "platform": "xiaohongshu", "source_type": "social_signal", "authority_level": "structured_commentary", "relevance_score": 7},
+    ]
+
+    balanced = mod.balance_candidates(candidates, comparative=True)
+
+    assert {item["source_type"] for item in balanced} >= {"podcast_episode", "social_signal"}
+    assert {item["authority_level"] for item in balanced} >= {"official", "structured_commentary"}
