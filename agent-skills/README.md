@@ -1,65 +1,85 @@
-# Agent Skills
+# Product Ontological Analysis
 
-Shareable skill pack for evidence-heavy research and structured collaboration workflows.
+Shareable Agent Skills-compatible skill for provenance-preserving evidence -> review pack -> writeback workflows.
 
-This folder is meant to be publishable as its own GitHub repository. The skills are kept generic; repo-specific rules live in example profiles.
+This directory is meant to be published as its own repository. It ships one reusable public skill and one example repo profile.
 
 ## Included
 
-- `product-ontological-analysis/`
-  - Generic skill for provenance-preserving evidence -> review pack -> writeback workflows.
-- `human-agent-coop-ux-init/`
-  - Generic skill for durable human-agent or agent-agent progression records.
-- `zero-to-one-human-machine-ux-conductor/`
-  - Generic skill for gating zero-to-one human-machine UX, product, or agent concepts before they collapse into premature UX or forced narrowing.
-- `profiles/product-ontology.md`
-  - Example of how a specific repository narrows a generic skill into concrete scripts, paths, and checks.
+### Public skill
 
-## Recommended Structure
+- `product-ontological-analysis/`
+  - Generic skill for evidence-constrained research and traceable writeback generation.
+
+### Example profile
+
+- `profiles/product-ontology.md`
+  - Concrete example of how one repository narrows the generic skill into specific scripts, paths, and verification checks.
+
+## Repository Layout
 
 ```text
-agent-skills/
+product-ontological-analysis/
   README.md
   product-ontological-analysis/
-    SKILL.md
-  human-agent-coop-ux-init/
-    SKILL.md
-  zero-to-one-human-machine-ux-conductor/
     SKILL.md
   profiles/
     product-ontology.md
 ```
 
-## Installation
+If you publish from the current `product-ontology` repository, the publishable root should be the contents of `agent-skills/`, not the surrounding repo.
 
-Publish the contents of this folder as a standalone repository, or copy individual skill folders directly.
+## Install
 
-For Codex-style local install:
+### Codex / OpenClaw-style shared install
+
+Use `~/.agents/skills` when you want a shared local install that Agent Skills-compatible runtimes can see:
 
 ```bash
 mkdir -p ~/.agents/skills
 cp -R product-ontological-analysis ~/.agents/skills/
-cp -R human-agent-coop-ux-init ~/.agents/skills/
-cp -R zero-to-one-human-machine-ux-conductor ~/.agents/skills/
 ```
 
-## Packaging Rule
+### Claude Code install
 
-Keep the skill itself portable:
+Claude Code reads skills from `~/.claude/skills/<skill-name>/SKILL.md` for personal installs and `.claude/skills/<skill-name>/SKILL.md` for project-scoped installs.
+
+For a personal install:
+
+```bash
+mkdir -p ~/.claude/skills
+cp -R product-ontological-analysis ~/.claude/skills/
+```
+
+### Project-scoped install
+
+If you want the skill to apply only inside one workspace, copy it into that workspace:
+
+```bash
+mkdir -p .agents/skills
+cp -R product-ontological-analysis .agents/skills/
+```
+
+## Portability Rule
+
+Keep the public skill portable:
 
 - no machine-specific absolute paths
 - no repo-private assumptions in the generic `SKILL.md`
 - no hardcoded runtime binaries tied to one workstation
 
-Put repo-specific constraints in a profile file instead. A workspace can keep that profile in its own docs folder, or a public skill repo can keep examples under `profiles/`.
+Put repo-specific constraints in a profile file instead. A workspace can keep that profile in its own docs folder, or a public repo can keep examples under `profiles/`.
 
-## How To Adapt
+## Adaptation
 
 1. Keep the generic skill body stable.
-2. Copy a profile template and replace the example repo details with your own scripts, artifact priorities, and verification commands.
+2. Copy the example profile and replace its repo-specific paths, commands, and verification rules with your own.
 3. In the target workspace, tell agents to read the repo profile before execution when one exists.
 
-## Notes
+## Quick Check
 
-- `profiles/product-ontology.md` is an example, not a universal contract.
-- If you publish this folder directly, the repository root should be the contents of `agent-skills/`, not the surrounding `product-ontology` repo.
+After copying, the installed skill directory should contain a `SKILL.md` entrypoint:
+
+```bash
+find ~/.agents/skills ~/.claude/skills .agents/skills 2>/dev/null -path '*/product-ontological-analysis/SKILL.md' | sort
+```
