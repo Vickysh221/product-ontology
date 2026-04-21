@@ -10,6 +10,8 @@ This folder is meant to be publishable as its own GitHub repository. The skills 
   - Generic skill for provenance-preserving evidence -> review pack -> writeback workflows.
 - `human-agent-coop-ux-init/`
   - Generic skill for durable human-agent or agent-agent progression records.
+- `architecture-conductor/`
+  - Generic skill for gating early product or agent concepts before they collapse into premature UX or forced narrowing.
 - `profiles/product-ontology.md`
   - Example of how a specific repository narrows a generic skill into concrete scripts, paths, and checks.
 
@@ -21,6 +23,8 @@ agent-skills/
   product-ontological-analysis/
     SKILL.md
   human-agent-coop-ux-init/
+    SKILL.md
+  architecture-conductor/
     SKILL.md
   profiles/
     product-ontology.md
@@ -36,6 +40,7 @@ For Codex-style local install:
 mkdir -p ~/.agents/skills
 cp -R product-ontological-analysis ~/.agents/skills/
 cp -R human-agent-coop-ux-init ~/.agents/skills/
+cp -R architecture-conductor ~/.agents/skills/
 ```
 
 ## Packaging Rule
